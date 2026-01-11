@@ -1,47 +1,50 @@
-"use client";
-import { useQuery } from "@tanstack/react-query";
-
-import { trpc } from "@/utils/trpc";
-
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+import Link from "next/link";
+import styles from "./stars.module.css";
+import { User, LogIn, ArrowRight } from "lucide-react";
 
 export default function Home() {
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions());
-
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-2">
-      <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-      <div className="grid gap-6">
-        <section className="rounded-lg border p-4">
-          <h2 className="mb-2 font-medium">API Status</h2>
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-            />
-            <span className="text-sm text-muted-foreground">
-              {healthCheck.isLoading
-                ? "Checking..."
-                : healthCheck.data
-                  ? "Connected"
-                  : "Disconnected"}
-            </span>
+    <main className={styles.container}>
+      <div className={styles.stars}></div>
+      <div className={styles.stars2}></div>
+      <div className={styles.stars3}></div>
+      
+      <div className={styles.mainWrapper}>
+        <div className={styles.titleWrapper}>
+          <h1 className={styles.mainTitle}>FinFlowOs</h1>
+          <p className={styles.subTitle}>Experience the Future</p>
+        </div>
+
+        <div className={styles.cardContainer}>
+          {/* Welcome/Login Card */}
+          <div className={styles.glassCard}>
+            <div className={styles.cardIcon}>
+              <LogIn size={48} strokeWidth={1.5} />
+            </div>
+            <h2 className={styles.cardTitle}>Welcome Back</h2>
+            <p className={styles.cardDesc}>
+              Access your personalized dashboard and continue your financial journey.
+            </p>
+            <Link href="/login" className={styles.buttonPrimary}>
+              Sign In
+            </Link>
           </div>
-        </section>
+
+          {/* Register Card */}
+          <div className={styles.glassCard}>
+            <div className={styles.cardIcon}>
+              <User size={48} strokeWidth={1.5} />
+            </div>
+            <h2 className={styles.cardTitle}>New Here?</h2>
+            <p className={styles.cardDesc}>
+              Create your account today and start managing your finances like a pro.
+            </p>
+            <Link href="/signup" className={styles.buttonSecondary}>
+              Create Account
+            </Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
