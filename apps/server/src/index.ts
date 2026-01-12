@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createContext } from "@ffo/api/context";
 import { appRouter } from "@ffo/api/routers/index";
 import { auth } from "@ffo/auth";

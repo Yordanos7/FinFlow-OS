@@ -1,10 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("Missing GEMINI_API_KEY environment variable");
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 
 const SYSTEM_INSTRUCTION = `
 You are FinFlowOs AI, an intelligent financial assistant for Ethiopian companies.
@@ -21,18 +15,48 @@ When analyzing data, be specific and cite numbers.
 `;
 
 export class AIService {
-  private model;
+  private model: GenerativeModel | null = null;
+  private apiKey: string | undefined;
 
   constructor() {
-    this.model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp",
-      systemInstruction: SYSTEM_INSTRUCTION,
-    });
+    this.apiKey = process.env.GEMINI_API_KEY;
+    if (this.apiKey) {
+      this.initializeModel();
+    }
+  }
+
+  private initializeModel() {
+    if (!this.apiKey) return;
+    try {
+      const genAI = new GoogleGenerativeAI(this.apiKey);
+      this.model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash-exp",
+        systemInstruction: SYSTEM_INSTRUCTION,
+      });
+    } catch (e) {
+      console.error("Failed to initialize Gemini model:", e);
+    }
+  }
+
+  private ensureInitialized() {
+    if (!this.model) {
+      // Try initializing again in case env var was loaded late
+      this.apiKey = process.env.GEMINI_API_KEY;
+      if (this.apiKey) {
+        this.initializeModel();
+      }
+      
+      if (!this.model) {
+        throw new Error("GEMINI_API_KEY is missing. Please add it to your .env file.");
+      }
+    }
+    return this.model!;
   }
 
   async generateResponse(message: string, context?: any) {
     try {
-      const chat = this.model.startChat({
+      const model = this.ensureInitialized();
+      const chat = model.startChat({
         history: context?.history || [],
       });
 
@@ -50,6 +74,7 @@ export class AIService {
   }
 
   async analyzeData(data: any, query: string) {
+    const model = this.ensureInitialized();
     const prompt = `
       Data to Analyze: ${JSON.stringify(data)}
       
@@ -58,7 +83,7 @@ export class AIService {
       Please provide a detailed analysis based ONLY on the provided data.
     `;
 
-    const result = await this.model.generateContent(prompt);
+    const result = await model.generateContent(prompt);
     return result.response.text();
   }
 }
