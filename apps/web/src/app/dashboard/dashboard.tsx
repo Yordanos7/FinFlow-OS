@@ -10,6 +10,7 @@ import {
   Wallet, 
   CheckCircle2 
 } from "lucide-react";
+import { AIChatOverlay } from "@/components/ai/AIChatOverlay";
 
 export default function Dashboard({ session }: { session: any }) {
   const stats = [
@@ -122,6 +123,7 @@ export default function Dashboard({ session }: { session: any }) {
           </div>
         </div>
       </div>
+      <AIChatOverlay />
     </DashboardLayout>
   );
 }
