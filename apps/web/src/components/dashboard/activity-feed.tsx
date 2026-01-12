@@ -37,7 +37,7 @@ const activities = [
 
 export function ActivityFeed() {
   return (
-    <div className="glass-card flex flex-col h-full rounded-3xl overflow-hidden border-none">
+    <div className="glass-card flex flex-col h-full rounded-3xl overflow-hidden">
       <div className="p-6 flex items-center justify-between border-b border-white/5">
         <h5 className="text-white font-bold">Recent Activity</h5>
         <button className="text-gray-400 hover:text-white transition-colors">

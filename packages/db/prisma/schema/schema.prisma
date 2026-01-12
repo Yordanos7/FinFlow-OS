@@ -1,10 +1,879 @@
+// FinFlowOs - Production Database Schema
+// Supports: Multi-tenancy, AI Features, Automation, Reports, Real-time Collaboration
+
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated"
-  moduleFormat = "esm"
-  runtime = "nodejs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============================================================================
+// CORE AUTHENTICATION & AUTHORIZATION
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  name          String
+  phone         String?
+  avatar        String? // Renamed from 'image' to match our schema
+  password      String? // Optional for OAuth users
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // Better-auth compatibility
+  accounts Account[]
+
+  // Multi-company support
+  companyMemberships CompanyMember[]
+
+  // Activity tracking
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  // AI interactions
+  aiConversations AIConversation[]
+  aiInsights      AIInsight[]      @relation("InsightCreator")
+
+  // Content ownership
+  projects  Project[]         @relation("ProjectCreator")
+  tasks     Task[]            @relation("TaskAssignee")
+  reports   GeneratedReport[] @relation("ReportCreator")
+  workflows Workflow[]        @relation("WorkflowCreator")
+
+  // Notifications
+  notifications Notification[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("session")
+}
+
+// Better-auth compatibility models
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ============================================================================
+// COMPANY & ORGANIZATION
+// ============================================================================
+
+model Company {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  logo     String?
+  industry String?
+  size     String? // 'small', 'medium', 'large'
+  taxId    String? @unique
+  address  String?
+  city     String?
+  country  String  @default("Ethiopia")
+  phone    String?
+  email    String?
+  website  String?
+
+  // Subscription & billing
+  plan       String    @default("free") // 'free', 'starter', 'professional', 'enterprise'
+  planExpiry DateTime?
+
+  // Settings
+  settings Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  members           CompanyMember[]
+  departments       Department[]
+  projects          Project[]
+  financialAccounts FinancialAccount[]
+  transactions      Transaction[]
+  budgets           Budget[]
+
+  // AI & Automation
+  aiConversations  AIConversation[]
+  aiInsights       AIInsight[]
+  workflows        Workflow[]
+  reportTemplates  ReportTemplate[]
+  generatedReports GeneratedReport[]
+  documents        Document[]
+
+  // Integrations
+  integrations Integration[]
+
+  @@index([slug])
+  @@index([createdAt])
+  @@map("companies")
+}
+
+model CompanyMember {
+  id        String @id @default(cuid())
+  companyId String
+  userId    String
+  role      String // 'super_admin', 'company_admin', 'project_manager', 'accountant', 'employee', etc.
+
+  // Permissions (JSON array of permission strings)
+  permissions Json @default("[]")
+
+  // Status
+  status    String    @default("active") // 'active', 'inactive', 'suspended'
+  invitedAt DateTime  @default(now())
+  joinedAt  DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([companyId])
+  @@index([userId])
+  @@index([role])
+  @@map("company_members")
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  headUserId  String?
+  budget      Decimal? @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  projects Project[]
+  budgets  Budget[]
+
+  @@index([companyId])
+  @@map("departments")
+}
+
+// ============================================================================
+// PROJECT MANAGEMENT
+// ============================================================================
+
+model Project {
+  id           String  @id @default(cuid())
+  companyId    String
+  departmentId String?
+  creatorId    String
+
+  name        String
+  description String?
+  status      String  @default("planning") // 'planning', 'active', 'on_hold', 'completed', 'cancelled'
+  priority    String  @default("medium") // 'low', 'medium', 'high', 'urgent'
+
+  // Timeline
+  startDate DateTime?
+  endDate   DateTime?
+
+  // Budget
+  budget Decimal? @db.Decimal(15, 2)
+  spent  Decimal  @default(0) @db.Decimal(15, 2)
+
+  // Progress
+  progress Int @default(0) // 0-100
+
+  // Metadata
+  tags        String[]
+  attachments Json     @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  creator    User        @relation("ProjectCreator", fields: [creatorId], references: [id])
+
+  tasks       Task[]
+  expenses    Expense[]
+  timeEntries TimeEntry[]
+  milestones  Milestone[]
+
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([startDate])
+  @@map("projects")
+}
+
+model Task {
+  id         String  @id @default(cuid())
+  projectId  String
+  assigneeId String?
+
+  title       String
+  description String?
+  status      String  @default("todo") // 'todo', 'in_progress', 'review', 'done'
+  priority    String  @default("medium")
+
+  // Timeline
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  // Estimation
+  estimatedHours Decimal? @db.Decimal(8, 2)
+  actualHours    Decimal? @db.Decimal(8, 2)
+
+  // Hierarchy
+  parentTaskId String?
+  order        Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  parentTask  Task?       @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  subTasks    Task[]      @relation("TaskHierarchy")
+  timeEntries TimeEntry[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Milestone {
+  id          String    @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  dueDate     DateTime
+  status      String    @default("pending") // 'pending', 'achieved', 'missed'
+  achievedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([dueDate])
+  @@map("milestones")
+}
+
+model TimeEntry {
+  id        String  @id @default(cuid())
+  projectId String
+  taskId    String?
+  userId    String
+
+  description String?
+  hours       Decimal  @db.Decimal(8, 2)
+  date        DateTime
+
+  // Billing
+  billable   Boolean  @default(true)
+  hourlyRate Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([userId])
+  @@index([date])
+  @@map("time_entries")
+}
+
+// ============================================================================
+// FINANCIAL MANAGEMENT
+// ============================================================================
+
+model FinancialAccount {
+  id        String  @id @default(cuid())
+  companyId String
+  name      String
+  type      String // 'asset', 'liability', 'equity', 'revenue', 'expense'
+  category  String? // 'cash', 'bank', 'accounts_receivable', etc.
+  code      String? // Account code for chart of accounts
+  balance   Decimal @default(0) @db.Decimal(15, 2)
+  currency  String  @default("ETB")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([type])
+  @@map("financial_accounts")
+}
+
+model Transaction {
+  id        String @id @default(cuid())
+  companyId String
+  accountId String
+
+  type     String // 'debit', 'credit'
+  amount   Decimal @db.Decimal(15, 2)
+  currency String  @default("ETB")
+
+  description String
+  reference   String? // Invoice number, receipt number, etc.
+  category    String? // 'salary', 'rent', 'utilities', 'sales', etc.
+
+  date DateTime
+
+  // Attachments (receipts, invoices)
+  attachments Json @default("[]")
+
+  // AI extracted data
+  aiExtractedData Json?
+
+  // Reconciliation
+  reconciled   Boolean   @default(false)
+  reconciledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  account FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([accountId])
+  @@index([date])
+  @@index([category])
+  @@map("transactions")
+}
+
+model Budget {
+  id           String  @id @default(cuid())
+  companyId    String
+  departmentId String?
+
+  name        String
+  description String?
+
+  // Period
+  startDate DateTime
+  endDate   DateTime
+
+  // Amounts
+  totalAmount Decimal @db.Decimal(15, 2)
+  spent       Decimal @default(0) @db.Decimal(15, 2)
+
+  // Categories (JSON array of {category, amount, spent})
+  categories Json @default("[]")
+
+  // Alerts
+  alertThreshold Int @default(80) // Alert when spent reaches this %
+
+  status String @default("active") // 'active', 'completed', 'exceeded'
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([startDate, endDate])
+  @@map("budgets")
+}
+
+model Expense {
+  id        String @id @default(cuid())
+  projectId String
+
+  description String
+  amount      Decimal @db.Decimal(15, 2)
+  currency    String  @default("ETB")
+  category    String
+
+  date DateTime
+
+  // Approval workflow
+  status     String    @default("pending") // 'pending', 'approved', 'rejected'
+  approvedBy String?
+  approvedAt DateTime?
+
+  // Attachments
+  receipts Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([date])
+  @@index([status])
+  @@map("expenses")
+}
+
+// ============================================================================
+// AI & INTELLIGENCE
+// ============================================================================
+
+model AIConversation {
+  id        String @id @default(cuid())
+  userId    String
+  companyId String
+
+  title String?
+
+  // Messages array: [{role: 'user'|'assistant', content: string, timestamp: Date}]
+  messages Json @default("[]")
+
+  // Context & metadata
+  context Json? // Relevant company data, project info, etc.
+  tags    String[]
+
+  // Analytics
+  messageCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("ai_conversations")
+}
+
+model AIInsight {
+  id        String  @id @default(cuid())
+  companyId String
+  createdBy String?
+
+  type     String // 'budget_alert', 'trend_analysis', 'recommendation', 'anomaly', 'forecast'
+  category String? // 'financial', 'project', 'resource', 'risk'
+
+  title       String
+  description String
+
+  // Severity for alerts
+  severity String @default("info") // 'info', 'low', 'medium', 'high', 'critical'
+
+  // Structured data
+  data Json
+
+  // Actions
+  actionable Boolean @default(false)
+  actions    Json? // Suggested actions
+
+  // Status
+  status     String    @default("active") // 'active', 'resolved', 'dismissed'
+  resolvedAt DateTime?
+
+  // Expiry (for time-sensitive insights)
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator User?   @relation("InsightCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+  @@map("ai_insights")
+}
+
+model AIModel {
+  id       String @id @default(cuid())
+  name     String @unique
+  type     String // 'chat', 'vision', 'embedding', 'classification'
+  provider String // 'gemini', 'openai', 'anthropic'
+  model    String // 'gemini-2.0-flash-exp', 'gpt-4', etc.
+
+  // Configuration
+  config Json @default("{}")
+
+  // Usage tracking
+  requestCount Int    @default(0)
+  tokenCount   BigInt @default(0)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([provider])
+  @@map("ai_models")
+}
+
+// ============================================================================
+// AUTOMATION & WORKFLOWS
+// ============================================================================
+
+model Workflow {
+  id        String @id @default(cuid())
+  companyId String
+  createdBy String
+
+  name        String
+  description String?
+
+  // Trigger configuration
+  trigger Json // {type: 'schedule'|'webhook'|'event', config: {...}}
+
+  // Actions array: [{type: 'generate_report'|'send_email'|'create_task', config: {...}}]
+  actions Json @default("[]")
+
+  // Conditions (optional filters)
+  conditions Json?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Statistics
+  executionCount Int       @default(0)
+  lastExecutedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator    User                @relation("WorkflowCreator", fields: [createdBy], references: [id])
+  executions WorkflowExecution[]
+
+  @@index([companyId])
+  @@index([createdBy])
+  @@index([isActive])
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id         String @id @default(cuid())
+  workflowId String
+
+  status String // 'running', 'completed', 'failed', 'cancelled'
+
+  // Execution details
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  duration    Int? // milliseconds
+
+  // Logs array: [{timestamp, level, message, data}]
+  logs Json @default("[]")
+
+  // Error details
+  error String?
+
+  // Trigger data
+  triggerData Json?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("workflow_executions")
+}
+
+// ============================================================================
+// REPORTS & TEMPLATES
+// ============================================================================
+
+model ReportTemplate {
+  id        String @id @default(cuid())
+  companyId String
+
+  name        String
+  description String?
+  type        String // 'financial', 'project', 'compliance', 'custom'
+  category    String? // 'monthly', 'quarterly', 'annual', 'ad_hoc'
+
+  // Template structure (HTML/JSON)
+  template Json
+
+  // AI prompt for content generation
+  aiPrompt String?
+
+  // Data sources configuration
+  dataSources Json @default("[]")
+
+  // Scheduling
+  schedule String? // Cron expression
+
+  // Recipients
+  recipients String[] // Email addresses
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reports GeneratedReport[]
+
+  @@index([companyId])
+  @@index([type])
+  @@index([isActive])
+  @@map("report_templates")
+}
+
+model GeneratedReport {
+  id         String @id @default(cuid())
+  templateId String
+  companyId  String
+  createdBy  String
+
+  name String
+
+  // Period covered
+  period Json // {start: Date, end: Date}
+
+  // Generated files
+  fileUrl  String? // PDF URL
+  excelUrl String? // Excel URL
+
+  // AI-generated content
+  insights String? // AI analysis and insights
+  summary  String? // Executive summary
+
+  // Metadata
+  metadata Json?
+
+  // Sharing
+  isPublic   Boolean @default(false)
+  shareToken String? @unique
+
+  // Status
+  status String @default("generating") // 'generating', 'completed', 'failed'
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  template ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator  User           @relation("ReportCreator", fields: [createdBy], references: [id])
+
+  @@index([templateId])
+  @@index([companyId])
+  @@index([createdBy])
+  @@index([status])
+  @@index([createdAt])
+  @@map("generated_reports")
+}
+
+// ============================================================================
+// DOCUMENT MANAGEMENT & INTELLIGENCE
+// ============================================================================
+
+model Document {
+  id         String @id @default(cuid())
+  companyId  String
+  uploadedBy String
+
+  name     String
+  type     String // 'receipt', 'invoice', 'contract', 'report', 'other'
+  mimeType String
+  size     Int // bytes
+
+  // Storage
+  fileUrl      String
+  thumbnailUrl String?
+
+  // AI Processing
+  extractedData Json? // AI-extracted structured data
+  ocrText       String? // Full OCR text
+
+  // Classification
+  category String?
+  tags     String[]
+
+  // Processing status
+  status      String    @default("pending") // 'pending', 'processing', 'processed', 'failed'
+  processedAt DateTime?
+
+  // Metadata
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([uploadedBy])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+// ============================================================================
+// INTEGRATIONS & WEBHOOKS
+// ============================================================================
+
+model Integration {
+  id        String @id @default(cuid())
+  companyId String
+
+  name     String
+  provider String // 'slack', 'telegram', 'email', 'custom_webhook'
+  type     String // 'notification', 'data_sync', 'automation'
+
+  // Configuration
+  config Json
+
+  // Credentials (encrypted)
+  credentials Json?
+
+  // Status
+  isActive   Boolean   @default(true)
+  lastSyncAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([provider])
+  @@index([isActive])
+  @@map("integrations")
+}
+
+// ============================================================================
+// NOTIFICATIONS & ALERTS
+// ============================================================================
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+
+  type    String // 'info', 'success', 'warning', 'error', 'ai_insight'
+  title   String
+  message String
+
+  // Action link
+  actionUrl  String?
+  actionText String?
+
+  // Related entities
+  relatedId   String?
+  relatedType String? // 'project', 'task', 'report', 'insight'
+
+  // Status
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// AUDIT & COMPLIANCE
+// ============================================================================
+
+model AuditLog {
+  id        String  @id @default(cuid())
+  userId    String?
+  companyId String?
+
+  action   String // 'create', 'update', 'delete', 'login', 'export', etc.
+  entity   String // 'user', 'project', 'transaction', etc.
+  entityId String?
+
+  // Changes
+  before Json?
+  after  Json?
+
+  // Context
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// SYSTEM CONFIGURATION
+// ============================================================================
+
+model SystemSetting {
+  id       String  @id @default(cuid())
+  key      String  @unique
+  value    Json
+  category String? // 'ai', 'email', 'storage', 'security'
+
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("system_settings")
 }
