@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { trpc } from "../utils/trpc";
+import { useMutation } from "@tanstack/react-query";
+import { trpcClient, queryClient } from "@/utils/trpc";
 
 type Message = {
   id: string;
@@ -9,10 +10,18 @@ type Message = {
 };
 
 export function useAIChat(companyId: string) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const utils = trpc.useUtils();
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      role: "assistant",
+      content: "Hello! I'm FinFlowOs AI. How can I help you analyze your business today?",
+    },
+  ]);
 
-  const sendMessageMutation = trpc.ai.sendMessage.useMutation({
+  const mutation = useMutation({
+    mutationFn: async (input: { message: string, companyId: string }) => {
+      return await trpcClient.ai.sendMessage.mutate(input);
+    },
     onSuccess: (data) => {
       // Replace the optimistic loading message with the real response
       setMessages((prev) => {
@@ -23,17 +32,20 @@ export function useAIChat(companyId: string) {
         ];
       });
       // Invalidate queries to refresh history if we were fetching it
-      utils.ai.getConversations.invalidate();
+      queryClient.invalidateQueries({ queryKey: [['ai', 'getConversations']] });
     },
     onError: (error) => {
-      setMessages((prev) => [
-        ...prev,
-        { 
-          id: crypto.randomUUID(), 
-          role: "assistant", 
-          content: "Sorry, I encountered an error due to: " + error.message 
-        },
-      ]);
+      setMessages((prev) => {
+        const filtered = prev.filter((msg) => !msg.isLoading);
+        return [
+          ...filtered,
+          { 
+            id: crypto.randomUUID(), 
+            role: "assistant", 
+            content: "Sorry, I encountered an error due to: " + error.message 
+          },
+        ];
+      });
     }
   });
 
@@ -56,7 +68,7 @@ export function useAIChat(companyId: string) {
     setMessages((prev) => [...prev, userMsg, loadingMsg]);
 
     // 3. Fire mutation
-    sendMessageMutation.mutate({
+    mutation.mutate({
       message: text,
       companyId,
     });
@@ -65,6 +77,6 @@ export function useAIChat(companyId: string) {
   return {
     messages,
     sendMessage,
-    isLoading: sendMessageMutation.isPending,
+    isLoading: mutation.isPending,
   };
 }

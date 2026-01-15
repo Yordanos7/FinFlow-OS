@@ -30,7 +30,7 @@ export class AIService {
     try {
       const genAI = new GoogleGenerativeAI(this.apiKey);
       this.model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-pro",
         systemInstruction: SYSTEM_INSTRUCTION,
       });
     } catch (e) {

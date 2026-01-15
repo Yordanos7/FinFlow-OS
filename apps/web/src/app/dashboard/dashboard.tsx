@@ -123,7 +123,8 @@ export default function Dashboard({ session }: { session: any }) {
           </div>
         </div>
       </div>
-      <AIChatOverlay />
+      {/* AI Chat temporarily disabled - enable after configuring valid Gemini API key */}
+      {/* <AIChatOverlay /> */}
     </DashboardLayout>
   );
 }
