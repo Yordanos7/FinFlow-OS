@@ -103,28 +103,33 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
     getCellFormula,
     updateCell,
     processTaskWithAI: async (message: string, companyId: string) => {
-      // 1. Snapshot current data
-      const data = hf.getSheetContent(activeSheetId);
-      
-      // 2. Call AI
-      const result = await trpcClient.ai.runComplexTask.mutate({
-        message,
-        data,
-        companyId
-      });
-
-      // 3. Apply updates
-      if (result.updates && Array.isArray(result.updates)) {
-        result.updates.forEach((update: any) => {
-          hf.setCellContents(
-            { sheet: activeSheetId, row: update.row, col: update.col }, 
-            [[update.formula || update.value]]
-          );
+      try {
+        // 1. Snapshot current data
+        const data = hf.getSheetValues(activeSheetId);
+        
+        // 2. Call AI
+        const result = await trpcClient.ai.runComplexTask.mutate({
+          message,
+          data,
+          companyId
         });
-        setSelection(prev => ({ ...prev }));
+
+        // 3. Apply updates
+        if (result.updates && Array.isArray(result.updates)) {
+          result.updates.forEach((update: any) => {
+            hf.setCellContents(
+              { sheet: activeSheetId, row: update.row, col: update.col }, 
+              [[update.formula || update.value]]
+            );
+          });
+          setSelection(prev => ({ ...prev }));
+        }
+        
+        return result.analysis;
+      } catch (e) {
+        console.error("AI Task failed in processTaskWithAI:", e);
+        throw e;
       }
-      
-      return result.analysis;
     },
     handleColResize,
     handleRowResize,

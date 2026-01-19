@@ -24,6 +24,7 @@ export class AIService {
   constructor() {
     this.geminiKey = process.env.GEMINI_API_KEY;
     this.groqKey = process.env.GROQ_API_KEY;
+    console.log("[AIService] Initializing. Gemini Key present:", !!this.geminiKey, "Groq Key present:", !!this.groqKey);
     this.initialize();
   }
 
@@ -105,8 +106,10 @@ export class AIService {
   }
 
   async analyzeData(data: any, query: string) {
+    console.log("[AIService] analyzeData called for query:", query.slice(0, 50) + "...");
     // For large data sets, always use Gemini 1.5 Flash
     if (!this.geminiModel) {
+      console.log("[AIService] Gemini model missing, falling back to generateResponse");
       // Fallback to Groq if Gemini is missing, but with a warning or truncation
       return this.generateResponse(query, { data });
     }
@@ -121,7 +124,10 @@ export class AIService {
     `;
 
     const result = await this.geminiModel.generateContent(prompt);
-    return result.response.text();
+    const response = await result.response;
+    const text = response.text();
+    console.log("[AIService] analyzeData success. Response length:", text.length);
+    return text;
   }
 }
 
