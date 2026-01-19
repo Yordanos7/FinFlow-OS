@@ -33,8 +33,7 @@ export class AIService {
       try {
         const genAI = new GoogleGenerativeAI(this.geminiKey);
         this.geminiModel = genAI.getGenerativeModel({ 
-          model: "gemini-1.5-flash",
-          systemInstruction: SYSTEM_INSTRUCTION,
+          model: "gemini-flash-latest", 
         });
       } catch (e) {
         console.error("Failed to initialize Gemini model:", e);
@@ -49,7 +48,6 @@ export class AIService {
       }
     }
   }
-
   private getModel(taskType: 'chat' | 'analysis') {
     if (taskType === 'analysis' && this.geminiModel) {
       return { type: 'gemini', model: this.geminiModel };
@@ -66,68 +64,102 @@ export class AIService {
     throw new Error("AI Services not initialized. Please provide GEMINI_API_KEY or GROQ_API_KEY.");
   }
 
-  async generateResponse(message: string, context?: any) {
+  private async withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+    try {
+      return await fn();
+    } catch (error: any) {
+      if (retries > 0 && (error.status === 503 || error.status === 429)) {
+        console.warn(`[AIService] AI overloaded (Status ${error.status}). Retrying in ${delay}ms... (${retries} left)`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.withRetry(fn, retries - 1, delay * 2);
+      }
+      throw error;
+    }
+  }
+
+  async generateResponse(message: string, context?: any): Promise<string> {
     try {
       const modelInfo = this.getModel(context?.data ? 'analysis' : 'chat');
 
-      if (modelInfo.type === 'groq') {
-        const completion = await modelInfo.client!.chat.completions.create({
-          messages: [
-            { role: "system", content: SYSTEM_INSTRUCTION },
-            ...(context?.history || []),
-            { 
-              role: "user", 
-              content: context?.data 
-                ? `Context Data: ${JSON.stringify(context.data)}\n\nUser Query: ${message}` 
-                : message 
-            },
-          ],
-          model: "llama-3.3-70b-versatile",
-          temperature: 0.7,
-        });
-        return completion.choices[0]?.message?.content || "No response generated";
-      } else {
-        const chat = modelInfo.model!.startChat({
-          history: context?.history || [],
-        });
+      return await this.withRetry(async () => {
+        if (modelInfo.type === 'groq') {
+          const completion = await modelInfo.client!.chat.completions.create({
+            messages: [
+              { role: "system", content: SYSTEM_INSTRUCTION },
+              ...(context?.history || []),
+              { 
+                role: "user", 
+                content: context?.data 
+                  ? `${SYSTEM_INSTRUCTION}\n\nContext Data: ${JSON.stringify(context.data)}\n\nUser Query: ${message}` 
+                  : `${SYSTEM_INSTRUCTION}\n\nUser Query: ${message}` 
+              },
+            ],
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.7,
+          });
+          return completion.choices[0]?.message?.content || "No response generated";
+        } else {
+          const chat = modelInfo.model!.startChat({
+            history: context?.history || [],
+          });
 
-        const prompt = context?.data 
-          ? `Context Data: ${JSON.stringify(context.data)}\n\nUser Query: ${message}`
-          : message;
+          const prompt = context?.data 
+            ? `${SYSTEM_INSTRUCTION}\n\nContext Data: ${JSON.stringify(context.data)}\n\nUser Query: ${message}`
+            : `${SYSTEM_INSTRUCTION}\n\nUser Query: ${message}`;
 
-        const result = await chat.sendMessage(prompt);
-        const response = await result.response;
-        return response.text();
-      }
-    } catch (error) {
+          const result = await chat.sendMessage(prompt);
+          const response = await result.response;
+          const text = response.text();
+          return text;
+        }
+      });
+    } catch (error: any) {
       console.error("AI Generation Error:", error);
-      throw new Error("Failed to generate AI response. Check your API keys.");
+      
+      // Critical Fallback: If primary model fails after retries, try Groq immediately
+      if (this.groqClient && context?.taskType !== 'fallback') {
+        console.log("[AIService] Primary model failed. Falling back to Groq Llama 3...");
+        return this.generateResponse(message, { ...context, taskType: 'fallback' });
+      }
+
+      throw new Error(`AI System busy: ${error.message || "Please try again later."}`);
     }
   }
 
   async analyzeData(data: any, query: string) {
     console.log("[AIService] analyzeData called for query:", query.slice(0, 50) + "...");
-    // For large data sets, always use Gemini 1.5 Flash
-    if (!this.geminiModel) {
-      console.log("[AIService] Gemini model missing, falling back to generateResponse");
-      // Fallback to Groq if Gemini is missing, but with a warning or truncation
-      return this.generateResponse(query, { data });
+    
+    try {
+      if (this.geminiModel) {
+        return await this.withRetry(async () => {
+          const prompt = `
+            ${SYSTEM_INSTRUCTION}
+            
+            Data to Analyze: ${JSON.stringify(data)}
+            
+            Analysis Request: ${query}
+            
+            Please provide a detailed analysis based ONLY on the provided data.
+            Use a structured JSON format if the request implies data updates.
+          `;
+
+          const result = await this.geminiModel!.generateContent(prompt);
+          const response = await result.response;
+          const text = response.text();
+          console.log("[AIService] Gemini analyzeData success. Response length:", text.length);
+          return text;
+        });
+      }
+      throw new Error("Gemini not available");
+    } catch (error: any) {
+      console.warn("[AIService] Gemini Analysis failed. Falling back to Groq...", error.message);
+      
+      if (this.groqClient) {
+        return this.generateResponse(query, { data, taskType: 'fallback' });
+      }
+      
+      throw error;
     }
-
-    const prompt = `
-      Data to Analyze: ${JSON.stringify(data)}
-      
-      Analysis Request: ${query}
-      
-      Please provide a detailed analysis based ONLY on the provided data.
-      Use a structured JSON format if the request implies data updates.
-    `;
-
-    const result = await this.geminiModel.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    console.log("[AIService] analyzeData success. Response length:", text.length);
-    return text;
   }
 }
 

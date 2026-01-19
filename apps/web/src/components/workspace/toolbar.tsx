@@ -18,27 +18,84 @@ import {
   Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AIAssistantModal } from './ai-assistant-modal';
+import { toast } from 'sonner';
 
 interface ToolbarProps {
   onAITask?: (message: string) => Promise<string>;
+  onImport?: (data: any[][]) => void;
 }
 
-export function Toolbar({ onAITask }: ToolbarProps) {
-  const [isProcessing, setIsProcessing] = React.useState(false);
+export function Toolbar({ onAITask, onImport }: ToolbarProps) {
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  const handleAIAssistant = async () => {
-    const task = window.prompt("What massive task should the AI do?");
-    if (!task || !onAITask) return;
-    
-    setIsProcessing(true);
-    try {
-      const result = await onAITask(task);
-      alert("AI Result: " + result);
-    } catch (e) {
-      alert("AI Task failed. Check your API keys.");
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        
+        // Robust CSV parsing handling quoted values containing delimiters
+        const rows: any[][] = [];
+        // Split by newlines that are not inside quotes
+        const lines = text.split(/\r?\n/);
+        
+        for (const line of lines) {
+          if (!line.trim()) continue; // Skip empty lines
+          
+          const row: any[] = [];
+          let currentCell = '';
+          let insideQuotes = false;
+          
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+              if (insideQuotes && line[i + 1] === '"') {
+                // Escaped quote
+                currentCell += '"';
+                i++;
+              } else {
+                insideQuotes = !insideQuotes;
+              }
+            } else if (char === ',' && !insideQuotes) {
+              row.push(currentCell.trim());
+              currentCell = '';
+            } else {
+              currentCell += char;
+            }
+          }
+          row.push(currentCell.trim()); // Push last cell
+          rows.push(row);
+        }
+
+        if (onImport) {
+          onImport(rows);
+          toast.success("Data imported successfully!");
+        }
+      } catch (error) {
+        console.error("CSV Import Error:", error);
+        toast.error("Failed to parse CSV file");
+      } finally {
+        // Reset input so the same file can be selected again
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    };
+    reader.onerror = () => {
+       toast.error("Failed to read file");
+       if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+  
+  const handleAIAssistant = () => {
+    setIsModalOpen(true);
   };
 
   const tools = [
@@ -89,25 +146,36 @@ export function Toolbar({ onAITask }: ToolbarProps) {
       <div className="flex items-center gap-2">
         <button 
           onClick={handleAIAssistant}
-          disabled={isProcessing}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 text-xs font-bold transition-all neon-border-blue group disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 text-xs font-bold transition-all neon-border-blue group"
         >
-          {isProcessing ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-          )}
+          <Sparkles className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
           AI Assistant
         </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-blue-400 border border-blue-500/20 text-xs font-bold transition-all neon-border-blue group">
+        <button 
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-blue-400 border border-blue-500/20 text-xs font-bold transition-all neon-border-blue group"
+        >
           <Upload className="w-3.5 h-3.5 group-hover:-translate-y-0.5 transition-transform" />
           Import
         </button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleImport} 
+          className="hidden" 
+          accept=".csv"
+        />
         <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold transition-all neon-glow-blue hover:scale-105 active:scale-95 group">
           <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
           Export
         </button>
       </div>
+
+      <AIAssistantModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onRunTask={onAITask || (async () => "")}
+      />
     </div>
   );
 }

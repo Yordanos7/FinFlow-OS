@@ -15,6 +15,7 @@ interface SpreadsheetProps {
   getRowHeight: (index: number) => number;
   handleColResize: (index: number, width: number) => void;
   handleRowResize: (index: number, height: number) => void;
+  dataRevision?: number;
 }
 
 export function Spreadsheet({ 
@@ -27,7 +28,8 @@ export function Spreadsheet({
   getColWidth,
   getRowHeight,
   handleColResize,
-  handleRowResize
+  handleRowResize,
+  dataRevision
 }: SpreadsheetProps) {
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null);
   const gridRef = useRef<any>(null);
@@ -36,6 +38,13 @@ export function Spreadsheet({
   const VariableSizeGrid = (ReactWindow as any).VariableSizeGrid || ReactWindow.VariableSizeGrid;
 
   // Keyboard Navigation
+  // Force grid refresh on data change
+  useEffect(() => {
+    if (gridRef.current && dataRevision !== undefined) {
+      gridRef.current.resetAfterIndices({ columnIndex: 0, rowIndex: 0 });
+    }
+  }, [dataRevision]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (editing) return;
@@ -170,7 +179,7 @@ export function Spreadsheet({
         )}
       </div>
     );
-  }, [selection, editing, getCellValue, onSelect, onCellUpdate]);
+  }, [selection, editing, getCellValue, onSelect, onCellUpdate, rowCount]);
 
   const itemData = useMemo(() => ({
     selection,
@@ -180,14 +189,16 @@ export function Spreadsheet({
     onCellUpdate,
     setEditing,
     getColWidth,
-    handleColResize
-  }), [selection, editing, getCellValue, onSelect, onCellUpdate, getColWidth, handleColResize]);
+    handleColResize,
+    dataRevision
+  }), [selection, editing, getCellValue, onSelect, onCellUpdate, getColWidth, handleColResize, dataRevision]);
 
   if (!VariableSizeGrid) return null;
 
   return (
     <div className="flex-1 bg-[#0F172A] relative overflow-hidden custom-scrollbar select-none">
       <VariableSizeGrid
+        key={dataRevision}
         ref={gridRef}
         columnCount={colCount + 1}
         columnWidth={(index: number) => index === 0 ? 50 : getColWidth(index - 1)}

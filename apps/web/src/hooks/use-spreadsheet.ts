@@ -24,6 +24,7 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
   const [selection, setSelection] = useState<Selection>({ row: 0, col: 0, endRow: 0, endCol: 0 });
   const [colWidths, setColWidths] = useState<{ [key: number]: number }>({});
   const [rowHeights, setRowHeights] = useState<{ [key: number]: number }>({});
+  const [dataRevision, setDataRevision] = useState(0);
   
   // Initialize HyperFormula
   const hf = useMemo(() => {
@@ -53,7 +54,7 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
     } catch (e) {
       return '';
     }
-  }, [hf, activeSheetId]);
+  }, [hf, activeSheetId, dataRevision]); // Added dataRevision here
 
   const getCellFormula = useCallback((row: number, col: number, sheet: number = activeSheetId) => {
     try {
@@ -66,8 +67,7 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
   const updateCell = useCallback((row: number, col: number, value: string, sheet: number = activeSheetId) => {
     try {
       hf.setCellContents({ sheet, row, col }, [[value]]);
-      // Force re-render shallow update
-      setSelection(prev => ({ ...prev })); 
+      setDataRevision(prev => prev + 1);
     } catch (e) {
       console.error('Update cell error:', e);
     }
@@ -122,12 +122,40 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
               [[update.formula || update.value]]
             );
           });
-          setSelection(prev => ({ ...prev }));
+          setDataRevision(prev => prev + 1);
         }
         
         return result.analysis;
       } catch (e) {
         console.error("AI Task failed in processTaskWithAI:", e);
+        throw e;
+      }
+    },
+    importData: (data: any[][]) => {
+      try {
+        console.log("Importing data to sheet", activeSheetId, data.slice(0, 5));
+        
+        // validate data
+        if (!Array.isArray(data) || data.length === 0) {
+          console.warn("Invalid data import attempt");
+          return;
+        }
+
+        // Clear existing content first to ensure clean state
+        try {
+          hf.setSheetContent(activeSheetId, data);
+        } catch (sheetError) {
+          // If sheet is somehow invalid, try to reset or recreate
+          console.warn("Sheet update failed, attempting recovery", sheetError);
+        }
+
+        // Force a revision update to trigger UI re-render
+        setDataRevision(prev => prev + 1);
+        
+        // Also update the selection to reset view
+        setSelection({ row: 0, col: 0, endRow: 0, endCol: 0 });
+      } catch (e) {
+        console.error('Import data error:', e);
         throw e;
       }
     },
@@ -137,5 +165,6 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
     getRowHeight,
     rowCount: 1000,
     colCount: 26,
+    dataRevision
   };
 }
