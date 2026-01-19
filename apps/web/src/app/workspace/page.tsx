@@ -45,7 +45,7 @@ export default function WorkspacePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-full bg-[#0F172A] overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-theme(spacing.4))] bg-[#0F172A] overflow-hidden">
         {/* Workspace Toolbar */}
         <Toolbar 
           onAITask={(msg) => processTaskWithAI(msg, 'default-company')} 

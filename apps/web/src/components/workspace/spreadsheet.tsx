@@ -33,6 +33,8 @@ export function Spreadsheet({
 }: SpreadsheetProps) {
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null);
   const gridRef = useRef<any>(null);
+  // Auto-sizing logic equivalent
+  const { ref: containerRef, size } = useElementSize();
 
   // Handle react-window import compatibility
   const VariableSizeGrid = (ReactWindow as any).VariableSizeGrid || ReactWindow.VariableSizeGrid;
@@ -196,20 +198,45 @@ export function Spreadsheet({
   if (!VariableSizeGrid) return null;
 
   return (
-    <div className="flex-1 bg-[#0F172A] relative overflow-hidden custom-scrollbar select-none">
-      <VariableSizeGrid
-        key={dataRevision}
-        ref={gridRef}
-        columnCount={colCount + 1}
-        columnWidth={(index: number) => index === 0 ? 50 : getColWidth(index - 1)}
-        height={800}
-        rowCount={rowCount + 1}
-        rowHeight={(index: number) => index === 0 ? 30 : getRowHeight(index - 1)}
-        width={1600}
-        itemData={itemData}
-      >
-        {Cell}
-      </VariableSizeGrid>
+    <div className="flex-1 bg-[#0F172A] relative overflow-hidden custom-scrollbar select-none" ref={containerRef}>
+      {size.width > 0 && size.height > 0 && (
+        <VariableSizeGrid
+          key={dataRevision}
+          ref={gridRef}
+          columnCount={colCount + 1}
+          columnWidth={(index: number) => index === 0 ? 50 : getColWidth(index - 1)}
+          height={size.height}
+          rowCount={rowCount + 1}
+          rowHeight={(index: number) => index === 0 ? 30 : getRowHeight(index - 1)}
+          width={size.width}
+          itemData={itemData}
+        >
+          {Cell}
+        </VariableSizeGrid>
+      )}
     </div>
   );
+}
+
+// Helper hook for size
+function useElementSize() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        });
+      }
+    });
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, size };
 }

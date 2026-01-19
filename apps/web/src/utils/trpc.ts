@@ -4,6 +4,7 @@ import { env } from "@ffo/env/web";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
+import { createTRPCReact } from "@trpc/react-query";
 import { toast } from "sonner";
 
 export const queryClient = new QueryClient({

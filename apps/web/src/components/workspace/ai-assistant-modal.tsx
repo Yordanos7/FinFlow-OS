@@ -6,6 +6,8 @@ import { Sparkles, X, Loader2, Bot, CheckCircle2, AlertCircle, Table as TableIco
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+import { trpc } from '@/utils/trpc';
+
 interface AIAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,13 +34,17 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
   const [showHistory, setShowHistory] = useState(true);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
 
-  // Mock fetching history - In real app use trpcClient.ai.getConversations.useQuery
-  // For now using fake data to demonstrate UI as per user request for "folder mode"
-  const historyItems = [
-    { id: '1', title: 'Analyze sales Q1', date: 'Just now', status: 'completed' },
-    { id: '2', title: 'Total revenue calculation', date: '2 hours ago', status: 'completed' },
-    { id: '3', title: 'Fix formatting errors', date: 'Yesterday', status: 'failed' },
-  ];
+
+  // Real History Fetching
+  const historyQuery = trpc.ai.getConversations.useQuery({ companyId: 'default-company' }); // TODO: Pass real companyId
+  const historyItems = historyQuery.data?.map(c => ({
+    id: c.id,
+    title: c.title,
+    date: new Date(c.updatedAt).toLocaleTimeString(), // Simple formatting
+    status: 'completed', // Assuming all saved are completed for now
+    messages: c.messages as any[] // Prepare to load messages
+  })) || [];
+
 
   const handleRun = async () => {
     if (!task.trim()) return;
@@ -98,8 +104,15 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
                             onClick={() => {
                                 // Load history item state
                                 setTask(item.title);
-                                setResult("Historical analysis result loaded for: " + item.title); // Placeholder for real history data
-                                setState({ step: 'completed', message: 'Loaded from history' });
+                                const lastMessage = item.messages[item.messages.length - 1];
+                                if (lastMessage?.role === 'assistant') {
+                                    setResult(lastMessage.content);
+                                    setState({ step: 'completed', message: 'Loaded from history' });
+                                } else {
+                                     // Just show query if no result
+                                    setResult(null);
+                                    setState({ step: 'idle', message: 'Ready to retry' });
+                                }
                                 setSelectedHistoryId(item.id);
                             }}
                             className={cn(
