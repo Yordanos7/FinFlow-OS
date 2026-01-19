@@ -81,6 +81,49 @@ export const aiRouter = router({
       };
     }),
 
+  runComplexTask: protectedProcedure
+    .input(z.object({
+      message: z.string(),
+      data: z.any(),
+      companyId: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const prompt = `
+        You are an expert financial data processor. 
+        Your task is to analyze the following spreadsheet data and fulfill the user request.
+        
+        USER REQUEST: ${input.message}
+        
+        DATA: ${JSON.stringify(input.data)}
+        
+        You must return a JSON object with the following structure:
+        {
+          "analysis": "A brief text summary of what you found/did",
+          "updates": [
+            { "row": number, "col": number, "value": string, "formula": string }
+          ]
+        }
+        
+        If the request is for an analysis only, "updates" can be an empty array.
+        If the request is to "total expenses", provide the value in a logical new cell and return it in "updates".
+        Be precise with row/col indices (0-indexed).
+      `;
+
+      const aiResponseText = await aiService.analyzeData(input.data, prompt);
+      
+      try {
+        // Attempt to extract JSON if the AI wrapped it in markdown or text
+        const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
+        const result = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponseText);
+        return result;
+      } catch (e) {
+        return {
+          analysis: aiResponseText,
+          updates: []
+        };
+      }
+    }),
+
   getConversations: protectedProcedure
     .input(z.object({ companyId: z.string() }))
     .query(async ({ ctx, input }) => {

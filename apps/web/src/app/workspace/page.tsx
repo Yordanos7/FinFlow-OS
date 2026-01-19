@@ -33,7 +33,8 @@ export default function WorkspacePage() {
     getColWidth,
     getRowHeight,
     handleColResize,
-    handleRowResize
+    handleRowResize,
+    processTaskWithAI
   } = useSpreadsheet(initialData);
 
   const activeFormula = useMemo(() => {
@@ -44,7 +45,7 @@ export default function WorkspacePage() {
     <DashboardLayout>
       <div className="flex flex-col h-full bg-[#0F172A] overflow-hidden">
         {/* Workspace Toolbar */}
-        <Toolbar />
+        <Toolbar onAITask={(msg) => processTaskWithAI(msg, 'default-company')} />
 
         {/* Formula Bar */}
         <FormulaBar 

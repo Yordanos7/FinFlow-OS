@@ -13,11 +13,34 @@ import {
   Download, 
   Upload,
   Table as TableIcon,
-  ChevronDown
+  ChevronDown,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function Toolbar() {
+interface ToolbarProps {
+  onAITask?: (message: string) => Promise<string>;
+}
+
+export function Toolbar({ onAITask }: ToolbarProps) {
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  
+  const handleAIAssistant = async () => {
+    const task = window.prompt("What massive task should the AI do?");
+    if (!task || !onAITask) return;
+    
+    setIsProcessing(true);
+    try {
+      const result = await onAITask(task);
+      alert("AI Result: " + result);
+    } catch (e) {
+      alert("AI Task failed. Check your API keys.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const tools = [
     { icon: Bold, label: 'Bold' },
     { icon: Italic, label: 'Italic' },
@@ -64,6 +87,18 @@ export function Toolbar() {
 
       {/* Export/Import Actions */}
       <div className="flex items-center gap-2">
+        <button 
+          onClick={handleAIAssistant}
+          disabled={isProcessing}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 text-xs font-bold transition-all neon-border-blue group disabled:opacity-50"
+        >
+          {isProcessing ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+          )}
+          AI Assistant
+        </button>
         <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-blue-400 border border-blue-500/20 text-xs font-bold transition-all neon-border-blue group">
           <Upload className="w-3.5 h-3.5 group-hover:-translate-y-0.5 transition-transform" />
           Import

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { HyperFormula } from 'hyperformula';
+import { trpcClient } from '@/utils/trpc';
 
 interface CellData {
   value: any;
@@ -101,6 +102,30 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
     getCellValue,
     getCellFormula,
     updateCell,
+    processTaskWithAI: async (message: string, companyId: string) => {
+      // 1. Snapshot current data
+      const data = hf.getSheetContent(activeSheetId);
+      
+      // 2. Call AI
+      const result = await trpcClient.ai.runComplexTask.mutate({
+        message,
+        data,
+        companyId
+      });
+
+      // 3. Apply updates
+      if (result.updates && Array.isArray(result.updates)) {
+        result.updates.forEach((update: any) => {
+          hf.setCellContents(
+            { sheet: activeSheetId, row: update.row, col: update.col }, 
+            [[update.formula || update.value]]
+          );
+        });
+        setSelection(prev => ({ ...prev }));
+      }
+      
+      return result.analysis;
+    },
     handleColResize,
     handleRowResize,
     getColWidth,
