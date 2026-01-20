@@ -97,6 +97,11 @@ export function Spreadsheet({
   const Cell = useCallback(({ columnIndex, rowIndex, style, data }: any) => {
     const { selection, editing, getCellValue, onSelect, onCellUpdate, setEditing, getColWidth, handleColResize } = data;
     
+    // Debug: Log first time any cell renders
+    if (rowIndex === 1 && columnIndex === 1) {
+      console.log("🎨 Cell(1,1) IS RENDERING! dataRevision:", data.dataRevision, "localRevision:", data.localRevision);
+    }
+    
     // Column header (A, B, C...)
     if (rowIndex === 0 && columnIndex > 0) {
       return (
@@ -217,6 +222,9 @@ export function Spreadsheet({
   }), [selection, editing, getCellValue, onSelect, onCellUpdate, getColWidth, handleColResize, dataRevision, localRevision]);
 
   if (!VariableSizeGrid) return null;
+
+  console.log("🎨 Container size:", size.width, "x", size.height);
+  console.log("🎨 Will render grid:", size.width > 0 && size.height > 0);
 
   return (
     <div className="flex-1 bg-[#0F172A] relative overflow-hidden custom-scrollbar select-none" ref={containerRef}>
