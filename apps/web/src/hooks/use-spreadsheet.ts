@@ -49,9 +49,18 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
   const getCellValue = useCallback((row: number, col: number, sheet: number = activeSheetId) => {
     try {
       const cellValue = hf.getCellValue({ sheet, row, col });
+      
+      // Handle all error types from HyperFormula
+      if (cellValue === null || cellValue === undefined) return '';
       if (cellValue instanceof Error) return '#ERROR!';
-      return cellValue === undefined ? '' : cellValue;
+      if (typeof cellValue === 'object' && cellValue !== null && 'type' in cellValue) {
+        // DetailedCellError has a 'type' property
+        return '#ERROR!';
+      }
+      
+      return cellValue;
     } catch (e) {
+      console.error('getCellValue error:', e);
       return '';
     }
   }, [hf, activeSheetId, dataRevision]); // Added dataRevision here

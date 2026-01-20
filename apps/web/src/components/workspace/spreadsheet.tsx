@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import * as ReactWindow from 'react-window';
+import { Grid } from 'react-window';
 import { cn } from '@/lib/utils';
+
+// react-window v2 exports Grid, not VariableSizeGrid
+const VariableSizeGrid = Grid;
 
 interface SpreadsheetProps {
   rowCount: number;
@@ -38,28 +41,19 @@ export function Spreadsheet({
   // Auto-sizing logic equivalent
   const { ref: containerRef, size } = useElementSize();
 
-  // Handle react-window import compatibility
-  const VariableSizeGrid = (ReactWindow as any).VariableSizeGrid || ReactWindow.VariableSizeGrid;
+  console.log("🎨 Spreadsheet render - dataRevision:", dataRevision, "size:", size);
 
-  // Debug: Log when dataRevision changes
+  // When dataRevision changes, force grid to refresh
   useEffect(() => {
-    console.log("🎨 Spreadsheet received dataRevision:", dataRevision);
-    console.log("🎨 Testing getCellValue(0, 0):", getCellValue(0, 0));
-    console.log("🎨 Testing getCellValue(1, 0):", getCellValue(1, 0));
-    console.log("🎨 gridRef.current exists:", !!gridRef.current);
+    console.log("🎨 dataRevision changed to:", dataRevision);
+    console.log("🎨 getCellValue(0, 0):", getCellValue(0, 0));
+    console.log("🎨 getCellValue(1, 0):", getCellValue(1, 0));
+    console.log("🎨 gridRef exists:", !!gridRef.current);
     
-    // Force local revision update to trigger itemData change
+    // Update localRevision to force cell re-renders via itemData change
     setLocalRevision(prev => prev + 1);
-  }, [dataRevision, getCellValue]);
-
-  // Force grid refresh on data change
-  useEffect(() => {
-    if (gridRef.current && dataRevision !== undefined) {
-      console.log("🎨 Resetting grid after dataRevision change:", dataRevision);
-      gridRef.current.resetAfterIndices({ columnIndex: 0, rowIndex: 0 });
-    } else {
-      console.log("🎨 Grid ref is null, cannot reset");
-    }
+    
+    // Note: Grid v2 doesn't have resetAfterIndices, but localRevision triggers re-render
   }, [dataRevision]);
 
   useEffect(() => {
@@ -94,12 +88,13 @@ export function Spreadsheet({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selection, editing, rowCount, colCount, onSelect]);
 
-  const Cell = useCallback(({ columnIndex, rowIndex, style, data }: any) => {
-    const { selection, editing, getCellValue, onSelect, onCellUpdate, setEditing, getColWidth, handleColResize } = data;
+  const Cell = useCallback(({ columnIndex, rowIndex, style, ...rest }: any) => {
+    // cellProps are spread into rest
+    const { selection, editing, getCellValue, onSelect, onCellUpdate, setEditing, getColWidth, handleColResize } = rest;
     
     // Debug: Log first time any cell renders
     if (rowIndex === 1 && columnIndex === 1) {
-      console.log("🎨 Cell(1,1) IS RENDERING! dataRevision:", data.dataRevision, "localRevision:", data.localRevision);
+      console.log("🎨 Cell(1,1) IS RENDERING! dataRevision:", rest.dataRevision, "localRevision:", rest.localRevision);
     }
     
     // Column header (A, B, C...)
@@ -156,8 +151,8 @@ export function Spreadsheet({
     const value = getCellValue(r, c);
     
     // Debug first few cells
-    if (r <= 2 && c <= 2 && data.dataRevision !== undefined) {
-      console.log(`🎨 Cell(${r},${c}) value:`, value, "revision:", data.dataRevision);
+    if (r <= 2 && c <= 2 && rest.dataRevision !== undefined) {
+      console.log(`🎨 Cell(${r},${c}) value:`, value, "revision:", rest.dataRevision);
     }
 
     return (
@@ -221,27 +216,29 @@ export function Spreadsheet({
     localRevision  // Force re-render when this changes
   }), [selection, editing, getCellValue, onSelect, onCellUpdate, getColWidth, handleColResize, dataRevision, localRevision]);
 
-  if (!VariableSizeGrid) return null;
-
   console.log("🎨 Container size:", size.width, "x", size.height);
-  console.log("🎨 Will render grid:", size.width > 0 && size.height > 0);
+  console.log("🎨 Will render grid:", (size.width > 0 && size.height > 0));
 
   return (
-    <div className="flex-1 bg-[#0F172A] relative overflow-hidden custom-scrollbar select-none" ref={containerRef}>
-      {size.width > 0 && size.height > 0 && (
-        <VariableSizeGrid
-          key={dataRevision}
-          ref={gridRef}
-          columnCount={colCount + 1}
-          columnWidth={(index: number) => index === 0 ? 50 : getColWidth(index - 1)}
-          height={size.height}
-          rowCount={rowCount + 1}
-          rowHeight={(index: number) => index === 0 ? 30 : getRowHeight(index - 1)}
-          width={size.width}
-          itemData={itemData}
-        >
-          {Cell}
-        </VariableSizeGrid>
+    <div className="w-full h-full min-h-[400px] bg-[#0F172A] relative overflow-hidden custom-scrollbar select-none" ref={containerRef}>
+      {size.width > 0 && size.height > 0 ? (
+        <>
+          <VariableSizeGrid
+            gridRef={gridRef}
+            columnCount={colCount + 1}
+            columnWidth={(index: number) => index === 0 ? 50 : getColWidth(index - 1)}
+            defaultHeight={size.height}
+            defaultWidth={size.width}
+            rowCount={rowCount + 1}
+            rowHeight={(index: number) => index === 0 ? 30 : getRowHeight(index - 1)}
+            cellComponent={Cell}
+            cellProps={itemData}
+          />
+        </>
+      ) : (
+        <div className="flex items-center justify-center h-full text-white/50">
+          <p>Waiting for container size... ({size.width}px × {size.height}px)</p>
+        </div>
       )}
     </div>
   );
