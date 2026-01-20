@@ -33,17 +33,32 @@ export function Spreadsheet({
 }: SpreadsheetProps) {
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null);
   const gridRef = useRef<any>(null);
+  const [localRevision, setLocalRevision] = useState(0);
+  
   // Auto-sizing logic equivalent
   const { ref: containerRef, size } = useElementSize();
 
   // Handle react-window import compatibility
   const VariableSizeGrid = (ReactWindow as any).VariableSizeGrid || ReactWindow.VariableSizeGrid;
 
-  // Keyboard Navigation
+  // Debug: Log when dataRevision changes
+  useEffect(() => {
+    console.log("🎨 Spreadsheet received dataRevision:", dataRevision);
+    console.log("🎨 Testing getCellValue(0, 0):", getCellValue(0, 0));
+    console.log("🎨 Testing getCellValue(1, 0):", getCellValue(1, 0));
+    console.log("🎨 gridRef.current exists:", !!gridRef.current);
+    
+    // Force local revision update to trigger itemData change
+    setLocalRevision(prev => prev + 1);
+  }, [dataRevision, getCellValue]);
+
   // Force grid refresh on data change
   useEffect(() => {
     if (gridRef.current && dataRevision !== undefined) {
+      console.log("🎨 Resetting grid after dataRevision change:", dataRevision);
       gridRef.current.resetAfterIndices({ columnIndex: 0, rowIndex: 0 });
+    } else {
+      console.log("🎨 Grid ref is null, cannot reset");
     }
   }, [dataRevision]);
 
@@ -134,6 +149,11 @@ export function Spreadsheet({
     const isSelected = selection.row === r && selection.col === c;
     const isEditing = editing?.row === r && editing?.col === c;
     const value = getCellValue(r, c);
+    
+    // Debug first few cells
+    if (r <= 2 && c <= 2 && data.dataRevision !== undefined) {
+      console.log(`🎨 Cell(${r},${c}) value:`, value, "revision:", data.dataRevision);
+    }
 
     return (
       <div 
@@ -192,8 +212,9 @@ export function Spreadsheet({
     setEditing,
     getColWidth,
     handleColResize,
-    dataRevision
-  }), [selection, editing, getCellValue, onSelect, onCellUpdate, getColWidth, handleColResize, dataRevision]);
+    dataRevision,
+    localRevision  // Force re-render when this changes
+  }), [selection, editing, getCellValue, onSelect, onCellUpdate, getColWidth, handleColResize, dataRevision, localRevision]);
 
   if (!VariableSizeGrid) return null;
 

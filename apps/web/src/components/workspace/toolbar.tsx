@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 
 interface ToolbarProps {
   onAITask?: (message: string) => Promise<string>;
-  onImport?: (data: any[][]) => void;
+  onImport?: (data: any[][]) => boolean;
 }
 
 export function Toolbar({ onAITask, onImport }: ToolbarProps) {
@@ -34,10 +34,19 @@ export function Toolbar({ onAITask, onImport }: ToolbarProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show loading toast
+    const loadingToast = toast.loading(`Reading ${file.name}...`);
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
+        
+        if (!text || text.trim().length === 0) {
+          toast.dismiss(loadingToast);
+          toast.error("File is empty");
+          return;
+        }
         
         // Robust CSV parsing handling quoted values containing delimiters
         const rows: any[][] = [];
@@ -73,11 +82,31 @@ export function Toolbar({ onAITask, onImport }: ToolbarProps) {
           rows.push(row);
         }
 
+        console.log("📊 Parsed CSV:", rows.length, "rows");
+
+        if (rows.length === 0) {
+          toast.dismiss(loadingToast);
+          toast.error("No data found in file");
+          return;
+        }
+
         if (onImport) {
-          onImport(rows);
-          toast.success("Data imported successfully!");
+          const success = onImport(rows);
+          toast.dismiss(loadingToast);
+          
+          if (success) {
+            toast.success(`✅ Loaded ${rows.length} rows × ${rows[0]?.length || 0} columns`, {
+              duration: 3000,
+            });
+          } else {
+            toast.error("Failed to load data into spreadsheet");
+          }
+        } else {
+          toast.dismiss(loadingToast);
+          toast.error("Import handler not available");
         }
       } catch (error) {
+        toast.dismiss(loadingToast);
         console.error("CSV Import Error:", error);
         toast.error("Failed to parse CSV file");
       } finally {
@@ -88,6 +117,7 @@ export function Toolbar({ onAITask, onImport }: ToolbarProps) {
       }
     };
     reader.onerror = () => {
+       toast.dismiss(loadingToast);
        toast.error("Failed to read file");
        if (fileInputRef.current) fileInputRef.current.value = "";
     };

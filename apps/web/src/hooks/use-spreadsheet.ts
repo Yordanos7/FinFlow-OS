@@ -131,32 +131,49 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
         throw e;
       }
     },
-    importData: (data: any[][]) => {
+    importData: (data: any[][]): boolean => {
       try {
-        console.log("Importing data to sheet", activeSheetId, data.slice(0, 5));
+        console.log("📊 Starting import to sheet", activeSheetId);
+        console.log("📊 Data rows:", data.length, "First 3 rows:", data.slice(0, 3));
         
         // validate data
         if (!Array.isArray(data) || data.length === 0) {
-          console.warn("Invalid data import attempt");
-          return;
+          console.error("❌ Invalid data import: empty or not an array");
+          return false;
         }
 
-        // Clear existing content first to ensure clean state
+        // Check if data has actual content
+        const hasContent = data.some(row => row.some(cell => cell !== '' && cell != null));
+        if (!hasContent) {
+          console.error("❌ Invalid data import: no actual content found");
+          return false;
+        }
+
+        // Set sheet content
         try {
+          console.log("📊 Setting sheet content...");
           hf.setSheetContent(activeSheetId, data);
+          console.log("✅ Sheet content set successfully");
         } catch (sheetError) {
-          // If sheet is somehow invalid, try to reset or recreate
-          console.warn("Sheet update failed, attempting recovery", sheetError);
+          console.error("❌ Sheet update failed:", sheetError);
+          return false;
         }
 
         // Force a revision update to trigger UI re-render
-        setDataRevision(prev => prev + 1);
+        setDataRevision(prev => {
+          const newRevision = prev + 1;
+          console.log("📊 Data revision updated:", prev, "->", newRevision);
+          return newRevision;
+        });
         
-        // Also update the selection to reset view
+        // Reset selection to top-left
         setSelection({ row: 0, col: 0, endRow: 0, endCol: 0 });
+        
+        console.log("✅ Import completed successfully");
+        return true;
       } catch (e) {
-        console.error('Import data error:', e);
-        throw e;
+        console.error('❌ Import data error:', e);
+        return false;
       }
     },
     handleColResize,
