@@ -4,7 +4,6 @@ import { env } from "@ffo/env/web";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
-import { createTRPCReact } from "@trpc/react-query";
 import { toast } from "sonner";
 
 export const queryClient = new QueryClient({
@@ -13,19 +12,19 @@ export const queryClient = new QueryClient({
       toast.error(error.message, {
         action: {
           label: "retry",
-          onClick: query.invalidate,
+          onClick: query.invalidate,                                                                
         },
       });
     },
   }),
 });
 
-export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
+export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();                                                                                                                                                                                   
 
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${env.NEXT_PUBLIC_SERVER_URL}/trpc`,
+      url: `${env.NEXT_PUBLIC_SERVER_URL}/trpc`,                                                                                                    
       fetch(url, options) {
         return fetch(url, {
           ...options,

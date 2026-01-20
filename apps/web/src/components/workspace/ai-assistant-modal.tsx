@@ -6,7 +6,7 @@ import { Sparkles, X, Loader2, Bot, CheckCircle2, AlertCircle, Table as TableIco
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-import { trpc } from '@/utils/trpc';
+import { trpcClient } from '@/utils/trpc';
 
 interface AIAssistantModalProps {
   isOpen: boolean;
@@ -36,14 +36,24 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
 
 
   // Real History Fetching
-  const historyQuery = trpc.ai.getConversations.useQuery({ companyId: 'default-company' }); // TODO: Pass real companyId
-  const historyItems = historyQuery.data?.map(c => ({
-    id: c.id,
-    title: c.title,
-    date: new Date(c.updatedAt).toLocaleTimeString(), // Simple formatting
-    status: 'completed', // Assuming all saved are completed for now
-    messages: c.messages as any[] // Prepare to load messages
-  })) || [];
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
+
+  React.useEffect(() => {
+     if (isOpen) {
+         trpcClient.ai.getConversations.query({ companyId: 'default-company' })
+            .then(data => {
+                const items = data.map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    date: new Date(c.updatedAt).toLocaleTimeString(),
+                    status: 'completed',
+                    messages: c.messages as any[]
+                }));
+                setHistoryItems(items);
+            })
+            .catch(err => console.error("Failed to fetch history", err));
+     }
+  }, [isOpen]);
 
 
   const handleRun = async () => {
@@ -98,7 +108,7 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
                     </h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                    {historyItems.map(item => (
+                    {historyItems.map((item: any) => (
                         <button
                             key={item.id}
                             onClick={() => {
