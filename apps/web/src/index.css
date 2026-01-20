@@ -129,10 +129,19 @@
 @layer utilities {
   .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    /* backdrop-filter: blur(20px);  <-- Removed heavy blur for performance */
+    /* -webkit-backdrop-filter: blur(20px); */
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+    will-change: content; 
+  }
+
+  .cell-hover {
+    transition: background-color 0.1s ease-in-out;
+  }
+  
+  .cell-hover:hover {
+    background-color: rgba(255, 255, 255, 0.05); /* Slightly brighter on hover */
   }
 
   .neon-glow-blue {

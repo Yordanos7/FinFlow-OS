@@ -60,10 +60,9 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
       
       return cellValue;
     } catch (e) {
-      console.error('getCellValue error:', e);
       return '';
     }
-  }, [hf, activeSheetId, dataRevision]); // Added dataRevision here
+  }, [hf, activeSheetId]); // Removed dataRevision to prevent cascade re-renders
 
   const getCellFormula = useCallback((row: number, col: number, sheet: number = activeSheetId) => {
     try {
@@ -78,7 +77,7 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
       hf.setCellContents({ sheet, row, col }, [[value]]);
       setDataRevision(prev => prev + 1);
     } catch (e) {
-      console.error('Update cell error:', e);
+      // Silently handle errors
     }
   }, [hf, activeSheetId]);
 
@@ -89,16 +88,16 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
   }, [hf, sheets.length]);
 
   // Resizing Logic
-  const handleColResize = (colIndex: number, newWidth: number) => {
+  const handleColResize = useCallback((colIndex: number, newWidth: number) => {
     setColWidths(prev => ({ ...prev, [colIndex]: Math.max(50, newWidth) }));
-  };
+  }, []);
 
-  const handleRowResize = (rowIndex: number, newHeight: number) => {
+  const handleRowResize = useCallback((rowIndex: number, newHeight: number) => {
     setRowHeights(prev => ({ ...prev, [rowIndex]: Math.max(25, newHeight) }));
-  };
+  }, []);
 
-  const getColWidth = (index: number) => colWidths[index] || 100;
-  const getRowHeight = (index: number) => rowHeights[index] || 25;
+  const getColWidth = useCallback((index: number) => colWidths[index] || 120, [colWidths]);
+  const getRowHeight = useCallback((index: number) => rowHeights[index] || 32, [rowHeights]);
 
   return {
     hf,
@@ -136,52 +135,37 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
         
         return result.analysis;
       } catch (e) {
-        console.error("AI Task failed in processTaskWithAI:", e);
         throw e;
       }
     },
     importData: (data: any[][]): boolean => {
       try {
-        console.log("📊 Starting import to sheet", activeSheetId);
-        console.log("📊 Data rows:", data.length, "First 3 rows:", data.slice(0, 3));
-        
         // validate data
         if (!Array.isArray(data) || data.length === 0) {
-          console.error("❌ Invalid data import: empty or not an array");
           return false;
         }
 
         // Check if data has actual content
         const hasContent = data.some(row => row.some(cell => cell !== '' && cell != null));
         if (!hasContent) {
-          console.error("❌ Invalid data import: no actual content found");
           return false;
         }
 
         // Set sheet content
         try {
-          console.log("📊 Setting sheet content...");
           hf.setSheetContent(activeSheetId, data);
-          console.log("✅ Sheet content set successfully");
         } catch (sheetError) {
-          console.error("❌ Sheet update failed:", sheetError);
           return false;
         }
 
         // Force a revision update to trigger UI re-render
-        setDataRevision(prev => {
-          const newRevision = prev + 1;
-          console.log("📊 Data revision updated:", prev, "->", newRevision);
-          return newRevision;
-        });
+        setDataRevision(prev => prev + 1);
         
         // Reset selection to top-left
         setSelection({ row: 0, col: 0, endRow: 0, endCol: 0 });
         
-        console.log("✅ Import completed successfully");
         return true;
       } catch (e) {
-        console.error('❌ Import data error:', e);
         return false;
       }
     },

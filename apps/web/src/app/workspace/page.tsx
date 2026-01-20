@@ -43,9 +43,17 @@ export default function WorkspacePage() {
     return getCellFormula(selection.row, selection.col);
   }, [selection, getCellFormula]);
 
+  const handleSelect = React.useCallback((r: number, c: number) => {
+    setSelection({ row: r, col: c, endRow: r, endCol: c });
+  }, [setSelection]);
+
+  const handleCellUpdate = React.useCallback((r: number, c: number, v: string) => {
+    updateCell(r, c, v);
+  }, [updateCell]);
+
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-[calc(100vh-theme(spacing.4))] bg-[#0F172A] overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-theme(spacing.4))] bg-[#0F172A] overflow-hidden gap-3">
         {/* Workspace Toolbar */}
         <Toolbar 
           onAITask={(msg) => processTaskWithAI(msg, 'default-company')} 
@@ -65,15 +73,15 @@ export default function WorkspacePage() {
         />
 
         {/* Main Grid Area */}
-        <div className="flex-1 relative bg-[#0F172A] p-2">
+        <div className="flex-1 relative bg-[#0F172A] p-4">
           <div className="w-full h-full rounded-2xl overflow-hidden glass-card">
         <Spreadsheet 
               rowCount={rowCount}
               colCount={colCount}
               selection={selection}
-              onSelect={(r, c) => setSelection({ row: r, col: c, endRow: r, endCol: c })}
+              onSelect={handleSelect}
               getCellValue={getCellValue}
-              onCellUpdate={(r, c, v) => updateCell(r, c, v)}
+              onCellUpdate={handleCellUpdate}
               getColWidth={getColWidth}
               getRowHeight={getRowHeight}
               handleColResize={handleColResize}

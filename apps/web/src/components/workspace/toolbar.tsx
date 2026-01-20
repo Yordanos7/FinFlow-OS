@@ -143,7 +143,7 @@ export function Toolbar({ onAITask, onImport }: ToolbarProps) {
   ];
 
   return (
-    <div className="flex items-center gap-1 p-1 px-4 bg-white/5 border-b border-white/10 overflow-x-auto whitespace-nowrap hide-scrollbar">
+    <div className="flex items-center gap-2 p-3 px-5 bg-white/5 border-b border-white/10 overflow-x-auto whitespace-nowrap hide-scrollbar">
       {/* File & Edit Actions */}
       <div className="flex items-center gap-4 mr-6 pr-6 border-r border-white/10">
         <button className="text-white hover:text-blue-400 text-sm font-medium transition-colors">File</button>
@@ -173,17 +173,17 @@ export function Toolbar({ onAITask, onImport }: ToolbarProps) {
       <div className="flex-1" />
 
       {/* Export/Import Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <button 
           onClick={handleAIAssistant}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 text-xs font-bold transition-all neon-border-blue group"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 text-xs font-bold transition-all neon-border-blue group"
         >
           <Sparkles className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
           AI Assistant
         </button>
         <button 
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-blue-400 border border-blue-500/20 text-xs font-bold transition-all neon-border-blue group"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-blue-400 border border-blue-500/20 text-xs font-bold transition-all neon-border-blue group"
         >
           <Upload className="w-3.5 h-3.5 group-hover:-translate-y-0.5 transition-transform" />
           Import
@@ -195,7 +195,7 @@ export function Toolbar({ onAITask, onImport }: ToolbarProps) {
           className="hidden" 
           accept=".csv"
         />
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold transition-all neon-glow-blue hover:scale-105 active:scale-95 group">
+        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold transition-all neon-glow-blue hover:scale-105 active:scale-95 group">
           <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
           Export
         </button>
