@@ -86,10 +86,27 @@ export const aiRouter = router({
       message: z.string(),
       data: z.any(),
       companyId: z.string(),
+      conversationId: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const { prisma, session } = ctx;
       console.log("[AIRouter] runComplexTask starting for company:", input.companyId);
+      
       try {
+        // 1. Get or create conversation
+        let conversationId = input.conversationId;
+        if (!conversationId) {
+          const conversation = await prisma.aIConversation.create({
+            data: {
+              userId: session.user.id,
+              companyId: input.companyId,
+              title: input.message.slice(0, 50) + "...",
+              messages: []
+            }
+          });
+          conversationId = conversation.id;
+        }
+
         const prompt = `
           You are an expert financial data processor. 
           Your task is to analyze the following spreadsheet data and fulfill the user request.
@@ -113,18 +130,49 @@ export const aiRouter = router({
 
         const aiResponseText = await aiService.analyzeData(input.data, prompt);
         
+        let result;
         try {
           // Attempt to extract JSON if the AI wrapped it in markdown or text
           const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
-          const result = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponseText);
-          return result;
+          result = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponseText);
         } catch (e) {
           console.warn("[AIRouter] Failed to parse AI response as JSON:", aiResponseText);
-          return {
+          result = {
             analysis: aiResponseText,
             updates: []
           };
         }
+
+        // 2. Save messages to DB
+        const timestamp = new Date().toISOString();
+        const newMessages = [
+          { role: 'user', content: input.message, timestamp },
+          { role: 'assistant', content: result.analysis, timestamp }
+        ];
+
+        const currentConversation = await prisma.aIConversation.findUnique({
+          where: { id: conversationId }
+        });
+
+        if (currentConversation) {
+          const currentMessages = (currentConversation.messages as any[]) || [];
+          const updatedMessages = [...currentMessages, ...newMessages];
+
+          await prisma.aIConversation.update({
+            where: { id: conversationId },
+            data: {
+              messages: updatedMessages,
+              updatedAt: new Date(),
+              messageCount: updatedMessages.length
+            }
+          });
+        }
+
+        return {
+          ...result,
+          conversationId
+        };
+
       } catch (error: any) {
         console.error("[AIRouter] Error in runComplexTask:", error);
         throw error;

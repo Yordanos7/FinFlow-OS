@@ -39,10 +39,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 interface ToolbarProps {
-  onAITask?: (message: string) => Promise<string>;
+  onAITask?: (message: string, conversationId?: string) => Promise<{ analysis: string; conversationId: string }>;
   onImport?: (data: any[][]) => boolean;
   onExport?: () => void;
   // Edit Actions
@@ -69,7 +69,6 @@ export function Toolbar({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // (Keep existing import logic)
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -89,7 +88,6 @@ export function Toolbar({
         
         // Robust CSV parsing handling quoted values containing delimiters
         const rows: any[][] = [];
-        // Split by newlines that are not inside quotes
         const lines = text.split(/\r?\n/);
         
         for (const line of lines) {
@@ -173,14 +171,14 @@ export function Toolbar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48 bg-[#1e293b] border-slate-700 text-white">
             <DropdownMenuGroup>
-                <DropdownMenuLabel>File Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-700" />
-                <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
+              <DropdownMenuLabel>File Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-slate-700" />
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
                 <Upload className="w-4 h-4 mr-2" /> Import CSV...
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onExport} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onExport} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
                 <Download className="w-4 h-4 mr-2" /> Export to CSV
-                </DropdownMenuItem>
+              </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -273,7 +271,7 @@ export function Toolbar({
       <AIAssistantModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onRunTask={onAITask || (async () => "")}
+        onRunTask={onAITask || (async (m: string, c?: string) => ({ analysis: "", conversationId: "" }))}
       />
     </div>
   );

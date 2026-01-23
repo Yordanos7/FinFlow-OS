@@ -23,7 +23,7 @@ import { trpcClient } from '@/utils/trpc';
 interface AIAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRunTask: (message: string) => Promise<string>;
+  onRunTask: (message: string, conversationId?: string) => Promise<{ analysis: string; conversationId: string }>;
 }
 
 interface Message {
@@ -47,13 +47,13 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch History on Open
   useEffect(() => {
     if (isOpen) {
-      trpcClient.ai.getConversations.query({ companyId: 'default-company' })
+      trpcClient.ai.getConversations.query({ companyId: 'cmkbkmxr60001g7w1ogn6jax5' })
         .then(data => {
           // Limit to 5 most recent history items
           const items = data.slice(0, 5).map((c: any) => ({
@@ -75,7 +75,7 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
   }, [messages]);
 
   const handleNewChat = () => {
-    setSelectedHistoryId(null);
+    setActiveConversationId(null);
     setMessages([{
       id: 'welcome',
       role: 'assistant',
@@ -86,7 +86,7 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
   };
 
   const handleHistoryItemSelect = (item: any) => {
-    setSelectedHistoryId(item.id);
+    setActiveConversationId(item.id);
     const historyMessages = item.messages.map((m: any, idx: number) => ({
         id: `hist-${item.id}-${idx}`,
         role: m.role,
@@ -95,7 +95,7 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
     }));
     setMessages(historyMessages);
     // Auto-close sidebar on mobile
-    if (window.innerWidth < 768) setIsSidebarOpen(false);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
   const handleSend = async () => {
@@ -122,18 +122,23 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
     }]);
 
     try {
-      const response = await onRunTask(userMsg.content);
+      const result = await onRunTask(userMsg.content, activeConversationId || undefined);
       
       setMessages(prev => prev.map(m => 
         m.id === thinkingId ? {
           ...m,
-          content: response,
+          content: result.analysis,
           isThinking: false
         } : m
       ));
 
+      // Update active conversation ID if this was the first message
+      if (!activeConversationId && result.conversationId) {
+        setActiveConversationId(result.conversationId);
+      }
+
       // Re-fetch history to include the new interaction
-      trpcClient.ai.getConversations.query({ companyId: 'default-company' })
+      trpcClient.ai.getConversations.query({ companyId: 'cmkbkmxr60001g7w1ogn6jax5' })
         .then(data => {
           const items = data.slice(0, 5).map((c: any) => ({
             id: c.id,
@@ -207,14 +212,14 @@ export function AIAssistantModal({ isOpen, onClose, onRunTask }: AIAssistantModa
                      onClick={() => handleHistoryItemSelect(item)}
                      className={cn(
                         "w-full text-left p-3 rounded-xl border transition-all group",
-                        selectedHistoryId === item.id 
+                        activeConversationId === item.id 
                             ? "bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/20" 
                             : "bg-transparent border-transparent hover:bg-white/5"
                      )}
                    >
                       <div className={cn(
                         "text-sm font-medium truncate",
-                        selectedHistoryId === item.id ? "text-indigo-300" : "text-slate-300 group-hover:text-white"
+                        activeConversationId === item.id ? "text-indigo-300" : "text-slate-300 group-hover:text-white"
                       )}>{item.title}</div>
                       <div className="text-[10px] text-slate-500 mt-1">{item.date.toLocaleDateString()}</div>
                    </button>

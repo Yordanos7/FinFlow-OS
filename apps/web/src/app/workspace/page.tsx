@@ -72,7 +72,7 @@ export default function WorkspacePage() {
       <div className="flex flex-col h-[calc(100vh-theme(spacing.4))] bg-[#0F172A] overflow-hidden gap-3">
         {/* Workspace Toolbar */}
         <Toolbar 
-          onAITask={(msg) => processTaskWithAI(msg, 'default-company')} 
+          onAITask={(msg, cid) => processTaskWithAI(msg, 'cmkbkmxr60001g7w1ogn6jax5', cid)} 
           onImport={handleImport}
           onInsertRow={(i) => insertRow(selection.row + i)}
           onDeleteRow={() => deleteRow(selection.row)}

@@ -162,7 +162,7 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
     getCellValue,
     getCellFormula,
     updateCell,
-    processTaskWithAI: async (message: string, companyId: string) => {
+    processTaskWithAI: async (message: string, companyId: string, conversationId?: string) => {
       try {
         // 1. Snapshot current data
         const data = hf.getSheetValues(activeSheetId);
@@ -171,7 +171,8 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
         const result = await trpcClient.ai.runComplexTask.mutate({
           message,
           data,
-          companyId
+          companyId,
+          conversationId
         });
 
         // 3. Apply updates
@@ -185,7 +186,10 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
           setDataRevision(prev => prev + 1);
         }
         
-        return result.analysis;
+        return {
+          analysis: result.analysis,
+          conversationId: result.conversationId
+        };
       } catch (e) {
         throw e;
       }
