@@ -3,14 +3,15 @@
 import React, { useCallback, useMemo } from 'react';
 import { 
   DataEditor, 
-  GridCellKind
+  GridCellKind,
+  CompactSelection,
+  GridSelection 
 } from "@glideapps/glide-data-grid";
 import type { 
   GridCell, 
   GridColumn, 
   Item, 
   EditableGridCell, 
-  GridSelection, 
   Theme 
 } from "@glideapps/glide-data-grid";
 import "@glideapps/glide-data-grid/dist/index.css";
@@ -94,8 +95,24 @@ export function Spreadsheet({
     onCellUpdate(row, col, newValue.data);
   }, [onCellUpdate]);
 
-  // Handle Selection Sync (Optional, if we want two-way sync)
-  // Glide manages its own selection state largely, but we can sync back to parent
+  // Controlled Selection Logic
+  const gridSelection = useMemo<GridSelection>(() => {
+    return {
+      current: {
+        cell: [externalSelection.col, externalSelection.row] as [number, number],
+        range: {
+          x: externalSelection.col,
+          y: externalSelection.row,
+          w: Math.max(1, (externalSelection.endCol - externalSelection.col) + 1),
+          h: Math.max(1, (externalSelection.endRow - externalSelection.row) + 1),
+        },
+        rangeStack: [],
+      },
+      columns: CompactSelection.empty(),
+      rows: CompactSelection.empty(),
+    };
+  }, [externalSelection]);
+
   const onGridSelectionChange = useCallback((selection: GridSelection) => {
     const current = selection.current?.cell;
     if (current) {
@@ -112,6 +129,7 @@ export function Spreadsheet({
         columns={columns}
         getCellContent={getCellContent}
         onCellEdited={onCellEdited}
+        gridSelection={gridSelection}
         onGridSelectionChange={onGridSelectionChange}
         onColumnResize={(col, newSize) => handleColResize(Number(col.id), newSize)}
         theme={theme}
