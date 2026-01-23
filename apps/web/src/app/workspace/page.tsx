@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Toolbar } from "@/components/workspace/toolbar";
 import { FormulaBar } from "@/components/workspace/formula-bar";
 import { SheetTabs } from "@/components/workspace/sheet-tabs";
+import { EmptyState } from "@/components/workspace/empty-state";
 import { useSpreadsheet } from "@/hooks/use-spreadsheet";
 import dynamic from 'next/dynamic';
 
@@ -14,14 +15,10 @@ const Spreadsheet = dynamic(
 );
 
 export default function WorkspacePage() {
-  const initialData = useMemo(() => [
-    ['Sales Report - Q1', '', '', '', ''],
-    ['Month', 'Units', 'Price', 'Revenue', 'Status'],
-    ['January', 150, 29.99, '=B3*C3', '✓ Done'],
-    ['February', 220, 29.99, '=B4*C4', '✓ Done'],
-    ['March', 180, 34.99, '=B5*C5', '⚠ Pending'],
-    ['TOTAL', '=SUM(B3:B5)', '', '=SUM(D3:D5)', ''],
-  ], []);
+  const [hasData, setHasData] = useState(false);
+
+  // Initialize with empty data structure
+  const initialData = useMemo(() => [[]], []);
 
   const {
     selection,
@@ -41,7 +38,13 @@ export default function WorkspacePage() {
     handleRowResize,
     processTaskWithAI,
     importData,
-    dataRevision
+    dataRevision,
+    insertRow,
+    insertCol,
+    deleteRow,
+    deleteCol,
+    setAlignment,
+    getCellStyle
   } = useSpreadsheet(initialData);
 
   const activeFormula = useMemo(() => {
@@ -55,6 +58,14 @@ export default function WorkspacePage() {
   const handleCellUpdate = React.useCallback((r: number, c: number, v: string) => {
     updateCell(r, c, v);
   }, [updateCell]);
+  
+  const handleImport = React.useCallback((data: any[][]) => {
+     const success = importData(data);
+     if (success) {
+        setHasData(true);
+     }
+     return success;
+  }, [importData]);
 
   return (
     <DashboardLayout>
@@ -62,47 +73,65 @@ export default function WorkspacePage() {
         {/* Workspace Toolbar */}
         <Toolbar 
           onAITask={(msg) => processTaskWithAI(msg, 'default-company')} 
-          onImport={importData}
-        />
-
-        {/* Formula Bar */}
-        <FormulaBar 
-          selection={selection}
-          formula={activeFormula}
-          onFormulaChange={(v) => {
-            // Live preview could go here
-          }}
-          onFormulaSubmit={() => {
-            // Finalize changes
+          onImport={handleImport}
+          onInsertRow={(i) => insertRow(selection.row + i)}
+          onDeleteRow={() => deleteRow(selection.row)}
+          onInsertCol={(i) => insertCol(selection.col + i)}
+          onDeleteCol={() => deleteCol(selection.col)}
+          onSetAlign={setAlignment}
+          onExport={() => {
+             // Basic Export (Optional: move to hook)
+             alert("Export feature coming soon! (Data is in HyperFormula)");
           }}
         />
 
-        {/* Main Grid Area */}
-        <div className="flex-1 relative bg-[#0F172A] p-4">
-          <div className="w-full h-full rounded-2xl overflow-hidden glass-card">
-        <Spreadsheet 
-              rowCount={rowCount}
-              colCount={colCount}
+        {hasData ? (
+          <>
+            {/* Formula Bar */}
+            <FormulaBar 
               selection={selection}
-              onSelect={handleSelect}
-              getCellValue={getCellValue}
-              onCellUpdate={handleCellUpdate}
-              getColWidth={getColWidth}
-              getRowHeight={getRowHeight}
-              handleColResize={handleColResize}
-              handleRowResize={handleRowResize}
-              dataRevision={dataRevision}
+              formula={activeFormula}
+              onFormulaChange={(v) => {
+                // Live preview could go here
+              }}
+              onFormulaSubmit={() => {
+                // Finalize changes
+              }}
             />
-          </div>
-        </div>
 
-        {/* Sheet Tabs */}
-        <SheetTabs 
-          sheets={sheets}
-          activeSheetId={activeSheetId}
-          onSheetChange={setActiveSheetId}
-          onAddSheet={() => addSheet('')}
-        />
+            {/* Main Grid Area */}
+            <div className="flex-1 relative bg-[#0F172A] p-4 animate-in fade-in duration-300">
+              <div className="w-full h-full rounded-2xl overflow-hidden glass-card">
+              <Spreadsheet 
+                  rowCount={rowCount}
+                  colCount={colCount}
+                  selection={selection}
+                  onSelect={handleSelect}
+                  getCellValue={getCellValue}
+                  getCellStyle={getCellStyle}
+                  onCellUpdate={handleCellUpdate}
+                  getColWidth={getColWidth}
+                  getRowHeight={getRowHeight}
+                  handleColResize={handleColResize}
+                  handleRowResize={handleRowResize}
+                  dataRevision={dataRevision}
+                />
+              </div>
+            </div>
+
+            {/* Sheet Tabs */}
+            <SheetTabs 
+              sheets={sheets}
+              activeSheetId={activeSheetId}
+              onSheetChange={setActiveSheetId}
+              onAddSheet={() => addSheet('')}
+            />
+          </>
+        ) : (
+           <div className="flex-1 relative bg-[#0F172A] p-4">
+               <EmptyState onImport={handleImport} />
+           </div>
+        )}
       </div>
     </DashboardLayout>
   );

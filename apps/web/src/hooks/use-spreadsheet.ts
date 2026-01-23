@@ -25,6 +25,7 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
   const [colWidths, setColWidths] = useState<{ [key: number]: number }>({});
   const [rowHeights, setRowHeights] = useState<{ [key: number]: number }>({});
   const [dataRevision, setDataRevision] = useState(0);
+  const [cellStyles, setCellStyles] = useState<Record<string, { align?: 'left' | 'center' | 'right' }>>({});
   
   // Initialize HyperFormula
   const hf = useMemo(() => {
@@ -98,6 +99,56 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
 
   const getColWidth = useCallback((index: number) => colWidths[index] || 120, [colWidths]);
   const getRowHeight = useCallback((index: number) => rowHeights[index] || 32, [rowHeights]);
+
+  // --- Structure Manipulation ---
+  const insertRow = useCallback((index: number) => {
+    try {
+      hf.addRows({ sheet: activeSheetId, row: index, amount: 1 });
+      setDataRevision(prev => prev + 1);
+    } catch (e) { console.error(e); }
+  }, [hf, activeSheetId]);
+
+  const insertCol = useCallback((index: number) => {
+    try {
+        hf.addColumns({ sheet: activeSheetId, column: index, amount: 1 });
+        setDataRevision(prev => prev + 1);
+    } catch (e) { console.error(e); }
+  }, [hf, activeSheetId]);
+
+  const deleteRow = useCallback((index: number) => {
+      try {
+        hf.removeRows({ sheet: activeSheetId, row: index, amount: 1 });
+        setDataRevision(prev => prev + 1);
+      } catch (e) { console.error(e); }
+  }, [hf, activeSheetId]);
+
+  const deleteCol = useCallback((index: number) => {
+      try {
+        hf.removeColumns({ sheet: activeSheetId, column: index, amount: 1 });
+        setDataRevision(prev => prev + 1);
+      } catch (e) { console.error(e); }
+  }, [hf, activeSheetId]);
+
+  // --- Styling ---
+  const setAlignment = useCallback((align: 'left' | 'center' | 'right') => {
+      setCellStyles(prev => {
+          const next = { ...prev };
+          // Apply to current selection range
+          for (let r = selection.row; r <= selection.endRow; r++) {
+              for (let c = selection.col; c <= selection.endCol; c++) {
+                  const key = `${r},${c}`;
+                  next[key] = { ...next[key], align };
+              }
+          }
+          return next;
+      });
+      setDataRevision(prev => prev + 1); // Trigger re-render
+  }, [selection]);
+
+  const getCellStyle = useCallback((row: number, col: number) => {
+      return cellStyles[`${row},${col}`] || {};
+  }, [cellStyles]);
+
 
   return {
     hf,
@@ -175,6 +226,13 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
     getRowHeight,
     rowCount: 1000,
     colCount: 26,
-    dataRevision
+    dataRevision,
+    // New Exports
+    insertRow,
+    insertCol,
+    deleteRow,
+    deleteCol,
+    setAlignment,
+    getCellStyle
   };
 }

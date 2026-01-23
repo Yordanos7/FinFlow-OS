@@ -37,6 +37,7 @@ interface SpreadsheetProps {
   selection: { row: number; col: number; endRow: number; endCol: number };
   onSelect: (selection: { row: number; col: number; endRow: number; endCol: number }) => void;
   getCellValue: (row: number, col: number) => any;
+  getCellStyle: (row: number, col: number) => { align?: 'left' | 'center' | 'right' };
   onCellUpdate: (row: number, col: number, value: string) => void;
   getColWidth: (index: number) => number;
   getRowHeight: (index: number) => number;
@@ -49,6 +50,7 @@ export function Spreadsheet({
   rowCount, 
   colCount, 
   getCellValue,
+  getCellStyle,
   onCellUpdate,
   getColWidth,
   handleColResize,
@@ -71,22 +73,30 @@ export function Spreadsheet({
   const getCellContent = useCallback((cell: Item): GridCell => {
     const [col, row] = cell; // Glide uses [col, row]
     const val = getCellValue(row, col); // Our hook uses (row, col)
+    const style = getCellStyle(row, col);
 
     const strVal = val === null || val === undefined ? "" : String(val);
 
     // Determine basic rendering style
     const isFormula = strVal.startsWith('=');
     const isNumber = !isFormula && !isNaN(Number(strVal)) && strVal !== '';
+    
+    // Default alignment: Number/Formula -> Right, Text -> Left
+    // If style.align is set, use it.
+    let align: "left" | "center" | "right" | undefined = style.align;
+    if (!align) {
+        align = isNumber || isFormula ? "right" : "left";
+    }
 
     return {
       kind: GridCellKind.Text,
       allowOverlay: true,
       displayData: strVal,
       data: strVal,
-      contentAlign: isNumber || isFormula ? "right" : "left", // Align numbers right
+      contentAlign: align,
       readonly: false,
     };
-  }, [getCellValue, dataRevision]); // depend on dataRevision to force update
+  }, [getCellValue, getCellStyle, dataRevision]); // depend on dataRevision to force update
 
   // Handle Edits
   const onCellEdited = useCallback((cell: Item, newValue: EditableGridCell) => {
