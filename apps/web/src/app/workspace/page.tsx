@@ -4,9 +4,14 @@ import React, { useMemo } from 'react';
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Toolbar } from "@/components/workspace/toolbar";
 import { FormulaBar } from "@/components/workspace/formula-bar";
-import { Spreadsheet } from "@/components/workspace/spreadsheet";
 import { SheetTabs } from "@/components/workspace/sheet-tabs";
 import { useSpreadsheet } from "@/hooks/use-spreadsheet";
+import dynamic from 'next/dynamic';
+
+const Spreadsheet = dynamic(
+  () => import("@/components/workspace/spreadsheet").then((mod) => mod.Spreadsheet),
+  { ssr: false }
+);
 
 export default function WorkspacePage() {
   const initialData = useMemo(() => [
