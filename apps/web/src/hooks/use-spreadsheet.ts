@@ -103,28 +103,29 @@ export function useSpreadsheet(initialData: any[][] = [[]]) {
   // --- Structure Manipulation ---
   const insertRow = useCallback((index: number) => {
     try {
-      hf.addRows({ sheet: activeSheetId, row: index, amount: 1 });
+      // addRows(sheetId, [row, amount])
+      hf.addRows(activeSheetId, [index, 1]);
       setDataRevision(prev => prev + 1);
     } catch (e) { console.error(e); }
   }, [hf, activeSheetId]);
 
   const insertCol = useCallback((index: number) => {
     try {
-        hf.addColumns({ sheet: activeSheetId, column: index, amount: 1 });
+        hf.addColumns(activeSheetId, [index, 1]);
         setDataRevision(prev => prev + 1);
     } catch (e) { console.error(e); }
   }, [hf, activeSheetId]);
 
   const deleteRow = useCallback((index: number) => {
       try {
-        hf.removeRows({ sheet: activeSheetId, row: index, amount: 1 });
+        hf.removeRows(activeSheetId, [index, 1]);
         setDataRevision(prev => prev + 1);
       } catch (e) { console.error(e); }
   }, [hf, activeSheetId]);
 
   const deleteCol = useCallback((index: number) => {
       try {
-        hf.removeColumns({ sheet: activeSheetId, column: index, amount: 1 });
+        hf.removeColumns(activeSheetId, [index, 1]);
         setDataRevision(prev => prev + 1);
       } catch (e) { console.error(e); }
   }, [hf, activeSheetId]);

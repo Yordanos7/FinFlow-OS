@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -165,21 +166,22 @@ export function Toolbar({
 
   return (
     <div className="flex items-center gap-2 p-3 px-5 bg-white/5 border-b border-white/10 overflow-x-auto whitespace-nowrap hide-scrollbar">
-      /* File & Edit Actions */
       <div className="flex items-center gap-2 mr-6 pr-6 border-r border-white/10">
         <DropdownMenu>
           <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-white hover:text-blue-400 hover:bg-white/5 cursor-pointer outline-none transition-colors")}>
             File
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48 bg-[#1e293b] border-slate-700 text-white">
-            <DropdownMenuLabel>File Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-slate-700" />
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
-              <Upload className="w-4 h-4 mr-2" /> Import CSV...
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExport} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
-              <Download className="w-4 h-4 mr-2" /> Export to CSV
-            </DropdownMenuItem>
+            <DropdownMenuGroup>
+                <DropdownMenuLabel>File Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-slate-700" />
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
+                <Upload className="w-4 h-4 mr-2" /> Import CSV...
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExport} className="focus:bg-blue-500/20 focus:text-blue-400 cursor-pointer">
+                <Download className="w-4 h-4 mr-2" /> Export to CSV
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -188,27 +190,29 @@ export function Toolbar({
             Edit
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56 bg-[#1e293b] border-slate-700 text-white">
-             <DropdownMenuItem className="focus:bg-white/10 cursor-pointer" disabled><Undo className="w-4 h-4 mr-2" /> Undo</DropdownMenuItem>
-             <DropdownMenuItem className="focus:bg-white/10 cursor-pointer" disabled><Redo className="w-4 h-4 mr-2" /> Redo</DropdownMenuItem>
-             <DropdownMenuSeparator className="bg-slate-700" />
-             <DropdownMenuLabel>Rows & Columns</DropdownMenuLabel>
-             <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="focus:bg-white/10 cursor-pointer"><Plus className="w-4 h-4 mr-2" /> Insert</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="bg-[#1e293b] border-slate-700 text-white">
-                    <DropdownMenuItem onClick={() => onInsertRow?.(0)} className="focus:bg-blue-500/20 cursor-pointer">Insert Row Above</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onInsertRow?.(1)} className="focus:bg-blue-500/20 cursor-pointer">Insert Row Below</DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-700" />
-                    <DropdownMenuItem onClick={() => onInsertCol?.(0)} className="focus:bg-blue-500/20 cursor-pointer">Insert Column Left</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onInsertCol?.(1)} className="focus:bg-blue-500/20 cursor-pointer">Insert Column Right</DropdownMenuItem>
-                </DropdownMenuSubContent>
-             </DropdownMenuSub>
-             <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="focus:bg-white/10 cursor-pointer text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="bg-[#1e293b] border-slate-700 text-white">
-                    <DropdownMenuItem onClick={() => onDeleteRow?.(0)} className="focus:bg-red-500/20 text-red-400 cursor-pointer">Delete Selected Row</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDeleteCol?.(0)} className="focus:bg-red-500/20 text-red-400 cursor-pointer">Delete Selected Column</DropdownMenuItem>
-                </DropdownMenuSubContent>
-             </DropdownMenuSub>
+             <DropdownMenuGroup>
+                <DropdownMenuItem className="focus:bg-white/10 cursor-pointer" disabled><Undo className="w-4 h-4 mr-2" /> Undo</DropdownMenuItem>
+                <DropdownMenuItem className="focus:bg-white/10 cursor-pointer" disabled><Redo className="w-4 h-4 mr-2" /> Redo</DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-slate-700" />
+                <DropdownMenuLabel>Rows & Columns</DropdownMenuLabel>
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="focus:bg-white/10 cursor-pointer"><Plus className="w-4 h-4 mr-2" /> Insert</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-[#1e293b] border-slate-700 text-white">
+                        <DropdownMenuItem onClick={() => onInsertRow?.(0)} className="focus:bg-blue-500/20 cursor-pointer">Insert Row Above</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onInsertRow?.(1)} className="focus:bg-blue-500/20 cursor-pointer">Insert Row Below</DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-slate-700" />
+                        <DropdownMenuItem onClick={() => onInsertCol?.(0)} className="focus:bg-blue-500/20 cursor-pointer">Insert Column Left</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onInsertCol?.(1)} className="focus:bg-blue-500/20 cursor-pointer">Insert Column Right</DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="focus:bg-white/10 cursor-pointer text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-[#1e293b] border-slate-700 text-white">
+                        <DropdownMenuItem onClick={() => onDeleteRow?.(0)} className="focus:bg-red-500/20 text-red-400 cursor-pointer">Delete Selected Row</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDeleteCol?.(0)} className="focus:bg-red-500/20 text-red-400 cursor-pointer">Delete Selected Column</DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -217,8 +221,10 @@ export function Toolbar({
              View
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48 bg-[#1e293b] border-slate-700 text-white">
-               <DropdownMenuItem className="focus:bg-white/10 cursor-pointer"><TableIcon className="w-4 h-4 mr-2" /> Gridlines</DropdownMenuItem>
-               <DropdownMenuItem className="focus:bg-white/10 cursor-pointer"><MoreHorizontal className="w-4 h-4 mr-2" /> Freeze Panes</DropdownMenuItem>
+               <DropdownMenuGroup>
+                   <DropdownMenuItem className="focus:bg-white/10 cursor-pointer"><TableIcon className="w-4 h-4 mr-2" /> Gridlines</DropdownMenuItem>
+                   <DropdownMenuItem className="focus:bg-white/10 cursor-pointer"><MoreHorizontal className="w-4 h-4 mr-2" /> Freeze Panes</DropdownMenuItem>
+               </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
