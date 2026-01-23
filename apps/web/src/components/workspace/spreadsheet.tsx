@@ -5,7 +5,7 @@ import {
   DataEditor, 
   GridCellKind,
   CompactSelection,
-  GridSelection 
+  type GridSelection 
 } from "@glideapps/glide-data-grid";
 import type { 
   GridCell, 
@@ -35,7 +35,7 @@ interface SpreadsheetProps {
   rowCount: number;
   colCount: number;
   selection: { row: number; col: number; endRow: number; endCol: number };
-  onSelect: (row: number, col: number) => void;
+  onSelect: (selection: { row: number; col: number; endRow: number; endCol: number }) => void;
   getCellValue: (row: number, col: number) => any;
   onCellUpdate: (row: number, col: number, value: string) => void;
   getColWidth: (index: number) => number;
@@ -103,8 +103,8 @@ export function Spreadsheet({
         range: {
           x: externalSelection.col,
           y: externalSelection.row,
-          w: Math.max(1, (externalSelection.endCol - externalSelection.col) + 1),
-          h: Math.max(1, (externalSelection.endRow - externalSelection.row) + 1),
+          width: Math.max(1, (externalSelection.endCol - externalSelection.col) + 1),
+          height: Math.max(1, (externalSelection.endRow - externalSelection.row) + 1),
         },
         rangeStack: [],
       },
@@ -114,9 +114,21 @@ export function Spreadsheet({
   }, [externalSelection]);
 
   const onGridSelectionChange = useCallback((selection: GridSelection) => {
-    const current = selection.current?.cell;
-    if (current) {
-        onSelect(current[1], current[0]); // row, col
+    const current = selection.current;
+    if (current && current.range) {
+       onSelect({
+         row: current.range.y,
+         col: current.range.x,
+         endRow: current.range.y + current.range.height - 1,
+         endCol: current.range.x + current.range.width - 1,
+       });
+    } else if (current && current.cell) {
+       onSelect({
+         row: current.cell[1],
+         col: current.cell[0],
+         endRow: current.cell[1],
+         endCol: current.cell[0],
+       });
     }
   }, [onSelect]);
 

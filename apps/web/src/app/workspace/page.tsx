@@ -43,8 +43,8 @@ export default function WorkspacePage() {
     return getCellFormula(selection.row, selection.col);
   }, [selection, getCellFormula]);
 
-  const handleSelect = React.useCallback((r: number, c: number) => {
-    setSelection({ row: r, col: c, endRow: r, endCol: c });
+  const handleSelect = React.useCallback((newSelection: { row: number; col: number; endRow: number; endCol: number }) => {
+    setSelection(newSelection);
   }, [setSelection]);
 
   const handleCellUpdate = React.useCallback((r: number, c: number, v: string) => {
