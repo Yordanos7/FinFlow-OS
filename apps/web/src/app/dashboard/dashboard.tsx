@@ -11,6 +11,8 @@ import {
   CheckCircle2 
 } from "lucide-react";
 import { AIChatOverlay } from "@/components/ai/AIChatOverlay";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
 export default function Dashboard({ session }: { session: any }) {
   const stats = [
@@ -109,6 +111,13 @@ export default function Dashboard({ session }: { session: any }) {
           <div className="lg:col-span-8 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-white border-b-2 border-blue-500 pb-2">Active Projects</h3>
+              <Link 
+                href={"/projects" as any} 
+                className="text-sm font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors group"
+              >
+                See All 
+                <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {projects.map((project, i) => (
