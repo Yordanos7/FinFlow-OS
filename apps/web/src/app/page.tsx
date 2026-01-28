@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "./stars.module.css";
 import { User, LogIn, ArrowRight } from "lucide-react";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -11,8 +12,11 @@ export default function Home() {
       
       <div className={styles.mainWrapper}>
         <div className={styles.titleWrapper}>
-          <h1 className={styles.mainTitle}>FinFlowOs</h1>
-          <p className={styles.subTitle}>Experience the Future</p>
+          <div className="flex justify-center mb-6">
+            <Image src="/logo.png" alt="FinFlow Logo" width={120} height={120} className="rounded-3xl shadow-2xl animate-pulse" />
+          </div>
+          <h1 className={styles.mainTitle}>FinFlow</h1>
+          <p className={styles.subTitle}>Simplify Your Financial Workflow</p>
         </div>
 
         <div className={styles.cardContainer}>

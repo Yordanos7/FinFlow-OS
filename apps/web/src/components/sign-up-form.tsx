@@ -9,6 +9,7 @@ import Loader from "./loader";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import Image from "next/image";
 
 export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const router = useRouter();
@@ -53,7 +54,11 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
 
   return (
     <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Create Account</h1>
+      <div className="flex flex-col items-center mb-8 text-center">
+        <Image src="/logo.png" alt="FinFlow Logo" width={80} height={80} className="mb-4 rounded-2xl shadow-xl" />
+        <h1 className="text-3xl font-bold tracking-tight">Create Account</h1>
+        <p className="text-sm text-muted-foreground mt-2">Join FinFlow to manage your finances</p>
+      </div>
 
       <form
         onSubmit={(e) => {
