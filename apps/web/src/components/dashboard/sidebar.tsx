@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -57,17 +58,24 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           isOpen ? "translate-x-0" : "-translate-x-[120%] lg:translate-x-0"
         )}
       >
+
         {/* Logo Section */}
         <div className="flex items-center gap-3 p-6 mb-4">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 neon-glow-blue">
-            <span className="text-white font-bold text-xl">F</span>
-          </div>
-          <span className={cn(
-            "text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 transition-opacity duration-300",
-            isCollapsed ? "lg:opacity-0 lg:hidden" : "opacity-100"
-          )}>
-            FinFlowOs
-          </span>
+          <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
+            <Image
+              src="/logo.png"
+              alt="FinFlow Logo"
+              width={40}
+              height={40}
+              className="rounded-xl shadow-lg shadow-blue-500/20"
+            />
+            <span className={cn(
+              "text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 transition-opacity duration-300",
+              isCollapsed ? "lg:opacity-0 lg:hidden" : "opacity-100"
+            )}>
+              FinFlow
+            </span>
+          </Link>
         </div>
 
         {/* Navigation Items */}

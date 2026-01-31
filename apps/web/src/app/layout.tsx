@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ffo",
-  description: "ffo",
+  title: "FinFlow",
+  description: "The ultimate financial workflow operating system.",
 };
 
 export default function RootLayout({
